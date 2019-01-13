@@ -1,3 +1,3 @@
 # Dynamic Visualizations Library
 <a href= "https://dvlib.org"><img src="https://dvlib.org/images/dvlogo100.svg" align="left" hspace="10" space="vspace"></a>
-Dynamic Visualizations Library (*dvlib*) is a JavaScript library which helps to create interactive data visualizations on HTML Canvas. Because *dvlib* is written in TypeScript, it can be easily used with [PowerBI Visual Tools](https://github.com/Microsoft/PowerBI-visuals-tools) to create outstanding custom visualizations for Power BI using object oriented programming approach.
+Dynamic Visualizations Library ([*dvlib*](https://dvlib.org)) is a JavaScript library which helps to create interactive data visualizations on HTML Canvas. Because [*dvlib*](https://dvlib.org) is written in TypeScript, it can be easily used with [PowerBI Visual Tools](https://github.com/Microsoft/PowerBI-visuals-tools) to create outstanding custom visualizations for Power BI using object oriented programming approach.
