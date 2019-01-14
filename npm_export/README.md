@@ -7,8 +7,27 @@ Recommended installation is via `npm`.
 ```
 npm i dvlib
 ```
+## Quickest start with webpack
+The quickest way to start programming using *dvlib* is to clone the template repository, which includes also development server.
 
-## Quick start with webpack
+```git
+git clone --depth=1 https://github.com/marepilc/dvlib_template.git projectname
+```
+```shell
+cd projectname
+```
+Now, you have to install dependencies
+
+```node
+npm i
+```
+and you are ready to go! Run the server:
+
+```node
+npm start
+```
+and start coding.
+## Not so quick start with webpack
 ### Create new folder with the following structure\
 
 ```
@@ -112,4 +131,4 @@ function draw() {
     text('Hello, World!', width / 2, height / 2);
 }
 ```
-<img src="https://dvlib.org/images/helloworld.png" align="middle" hspace="10" vspace="6">
+<div style="text-align:center"><img src="https://dvlib.org/images/helloworld.png" align="middle" vspace="6"></div>
