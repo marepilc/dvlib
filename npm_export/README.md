@@ -11,7 +11,7 @@ npm i dvlib
 The quickest way to start programming using *dvlib* is to clone the template repository, which includes also development server.
 
 ```git
-git clone --depth=1 https://github.com/marepilc/dvlib_template.git projectname
+git clone --depth=1 https://github.com/marepilc/dvlib_template.git projectname rm -rf !$/.git
 ```
 ```shell
 cd projectname
