@@ -166,8 +166,6 @@ class DV {
     public fontSize: number;
     public fontFamily: string;
     public lineHeight: number;
-    public setup: any;
-    public draw: any;
     public keyIsPressed: boolean;
     public altIsPressed: boolean;
     public shiftIsPressed: boolean;
