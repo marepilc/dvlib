@@ -104,10 +104,10 @@ class Mouse {
         this.mouseClick = function () {};
         this.mouseDblClick = function () {};
 
-        this._canvas.addEventListener('mousemove', (e) => {
+        this._canvas.addEventListener('mousemove', (e: MouseEvent) => {
             this._updateMousePos(canvas, e);
         });
-        this._canvas.addEventListener('wheel', (e) => {
+        this._canvas.addEventListener('wheel', (e: WheelEvent) => {
             this._updateMousePos(canvas, e);
             this.mouseWheel(e);
         });
@@ -166,25 +166,54 @@ class DV {
     public fontSize: number;
     public fontFamily: string;
     public lineHeight: number;
-    public animation: AnimationCtrl | null;
     public setup: any;
     public draw: any;
+    public keyIsPressed: boolean;
+    public altIsPressed: boolean;
+    public shiftIsPressed: boolean;
+    public ctrlIsPressed: boolean;
+    public keyPressed: string | null;
+    public onKeyDown: (key: string) => void;
+    public onKeyUp: (key: string) => void;
 
-    constructor(canvas: HTMLCanvasElement, _noLoop = false) {
+    constructor(canvas: HTMLCanvasElement, noLoop = false) {
         this.canvas = canvas;
         this.ctx = this.canvas.getContext('2d');
         this.dpi = 300;
-        this.noLoop = _noLoop;
+        this.noLoop = noLoop;
         this.withFill = true;
         this.withStroke = true;
-        this.currentFill = '#437aa9';
-        this.currentStroke = '#02020e';
+        this.currentFill = blueLight;
+        this.currentStroke = coldGrayDark;
         this.fontStyle = 'normal';
         this.fontWeight = 'normal';
         this.fontSize = 24;
         this.fontFamily = 'sans-serif';
         this.lineHeight = 1.1;
-        this.animation = null;
+        this.keyIsPressed = false;
+        this.altIsPressed = false;
+        this.shiftIsPressed = false;
+        this.ctrlIsPressed = false;
+        this.keyPressed = null;
+        this.onKeyDown = function (key) {};
+        this.onKeyUp = function (key) {};
+        this.canvas.tabIndex = 1; // to make it focusable
+        this.canvas.addEventListener('keydown', (e) => {
+            this.keyIsPressed = true;
+            if (e.key === 'Alt') this.altIsPressed = true;
+            if (e.key === 'Shift') this.shiftIsPressed = true;
+            if (e.key === 'Control') this.ctrlIsPressed = true;
+            this.keyPressed = e.key;
+            this.onKeyDown(e.key);
+        });
+        this.canvas.addEventListener('keyup', (e) => {
+            this.keyIsPressed = false;
+            if (e.key === 'Alt') this.altIsPressed = false;
+            if (e.key === 'Shift') this.shiftIsPressed = false;
+            if (e.key === 'Control') this.ctrlIsPressed = false;
+            this.keyPressed = null;
+            this.onKeyUp(e.key);
+        });
     }
 
     public commitShape() {

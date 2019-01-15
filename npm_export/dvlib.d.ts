@@ -37,10 +37,16 @@ declare class DV {
     fontSize: number;
     fontFamily: string;
     lineHeight: number;
-    animation: AnimationCtrl | null;
     setup: any;
     draw: any;
-    constructor(canvas: HTMLCanvasElement, _noLoop?: boolean);
+    keyIsPressed: boolean;
+    altIsPressed: boolean;
+    shiftIsPressed: boolean;
+    ctrlIsPressed: boolean;
+    keyPressed: string | null;
+    onKeyDown: (key: string) => void;
+    onKeyUp: (key: string) => void;
+    constructor(canvas: HTMLCanvasElement, noLoop?: boolean);
     commitShape(): void;
 }
 export declare enum Cursor {
