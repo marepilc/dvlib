@@ -37,8 +37,6 @@ declare class DV {
     fontSize: number;
     fontFamily: string;
     lineHeight: number;
-    setup: any;
-    draw: any;
     keyIsPressed: boolean;
     altIsPressed: boolean;
     shiftIsPressed: boolean;
