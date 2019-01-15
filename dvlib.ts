@@ -2,6 +2,7 @@
 
 export function dvStart(setup?: () => void, draw?: () => void, events?: () => void,
                         loadAssets?: () => void) {
+    assets = {};
     if (loadAssets != undefined) loadAssets();
     if (assetList.length > 0) {
         preloader.on('complete', onCompletePreloader); // on complete listener
@@ -38,20 +39,23 @@ function dVrun(setup?: () => void, draw?: () => void, events?: () => void) {
     }
 }
 
-export function initMouse() {
+function initMouse() {
     if (mouse == undefined) {
         mouse = new Mouse(dV.canvas);
     }
 }
 
 export function createCanvas(target: HTMLElement): void {
-    dV = new DV(document.createElement('canvas'));
+    let cnv = document.createElement('canvas');
+    keyboard = new Keyboard(cnv);   
+    dV = new DV(cnv);
     target.appendChild(dV.canvas);
     setContextDefault();
 }
 
 export function selectCanvas(id: string): void {
     let cnv = <HTMLCanvasElement>document.getElementById(id);
+    keyboard = new Keyboard(cnv);
     dV = new DV(cnv);
     setContextDefault();
 }
@@ -68,13 +72,25 @@ interface ColorRGB {
     b: number
 }
 
+interface assetsObject {
+    [key: string]: any
+}
+
+interface TimeFrame {
+    time: number,
+    frame: number
+}
+
+let dV: DV;
+
 // Global variables
 export let
-    dV: DV,
     width: number,
     height: number,
+    keyboard: Keyboard,
     mouse: Mouse,
-    animation: AnimationCtrl;
+    animation: AnimationCtrl,
+    assets: assetsObject;
 
 let assetList: AssetsItem[] = [];
 
@@ -85,11 +101,11 @@ class Mouse {
     private _px: number;
     private _py: number;
     public isPressed: boolean;
-    public mouseWheel: (e: MouseWheelEvent) => void;
-    public mouseDown: () => void;
-    public mouseUp: () => void;
-    public mouseClick: () => void;
-    public mouseDblClick: () => void;
+    public wheel: (e: MouseWheelEvent) => void;
+    public down: () => void;
+    public up: () => void;
+    public click: () => void;
+    public dblClick: () => void;
 
     constructor(canvas: HTMLCanvasElement) {
         this._canvas = canvas;
@@ -98,32 +114,32 @@ class Mouse {
         this._px = 0;
         this._py = 0;
         this.isPressed = false;
-        this.mouseWheel = function (e) {};
-        this.mouseDown = function () {};
-        this.mouseUp = function () {};
-        this.mouseClick = function () {};
-        this.mouseDblClick = function () {};
+        this.wheel = function (e) {};
+        this.down = function () {};
+        this.up = function () {};
+        this.click = function () {};
+        this.dblClick = function () {};
 
         this._canvas.addEventListener('mousemove', (e: MouseEvent) => {
             this._updateMousePos(canvas, e);
         });
         this._canvas.addEventListener('wheel', (e: WheelEvent) => {
             this._updateMousePos(canvas, e);
-            this.mouseWheel(e);
+            this.wheel(e);
         });
         this._canvas.addEventListener('mousedown', () => {
             this.isPressed = true;
-            this.mouseDown();
+            this.down();
         });
         this._canvas.addEventListener('mouseup', () => {
             this.isPressed = false;
-            this.mouseUp();
+            this.up();
         });
         this._canvas.addEventListener('click', () => {
-            this.mouseClick();
+            this.click();
         });
         this._canvas.addEventListener('dblclick', () => {
-            this.mouseDblClick();
+            this.dblClick();
         });
     }
 
@@ -152,6 +168,108 @@ class Mouse {
     }
 }
 
+
+class Keyboard {
+    public keyIsPressed: boolean;
+    public altIsPressed: boolean;
+    public shiftIsPressed: boolean;
+    public ctrlIsPressed: boolean;
+    public keyPressed: string | null;
+    public keyDown: (key: string) => void;
+    public keyUp: (key: string) => void;
+    private _canvas: HTMLCanvasElement;
+
+    constructor(canvas: HTMLCanvasElement) {
+        this._canvas = canvas;
+        this.keyIsPressed = false;
+        this.altIsPressed = false;
+        this.shiftIsPressed = false;
+        this.ctrlIsPressed = false;
+        this.keyPressed = null;
+        this.keyDown = function (key) { };
+        this.keyUp = function (key) { };
+        this._canvas.tabIndex = 1; // to make it focusable
+        this._canvas.addEventListener('keydown', (e) => {
+            this.keyIsPressed = true;
+            if (e.key === 'Alt') this.altIsPressed = true;
+            if (e.key === 'Shift') this.shiftIsPressed = true;
+            if (e.key === 'Control') this.ctrlIsPressed = true;
+            this.keyPressed = e.key;
+            this.keyDown(e.key);
+        });
+        this._canvas.addEventListener('keyup', (e) => {
+            this.keyIsPressed = false;
+            if (e.key === 'Alt') this.altIsPressed = false;
+            if (e.key === 'Shift') this.shiftIsPressed = false;
+            if (e.key === 'Control') this.ctrlIsPressed = false;
+            this.keyPressed = null;
+            this.keyUp(e.key);
+        });
+    }
+}
+
+class AnimationCtrl {
+    private _fps: number;
+    private _delay: number;
+    private _time: number | null;
+    private _loop: (x: number) => void;
+    public currentFrame: number;
+    public isAnimating: boolean;
+    public start: () => void;
+    public stop: () => void;
+
+    constructor(callback: (TimeFrame: TimeFrame) => void) {
+        this._fps = 60;
+        this._delay = 1000 / this._fps;
+        this.currentFrame = -1;
+
+        this._time = null;
+        let reqAF: number;
+
+        this._loop = (timestamp: number) => {
+            if (this._time == null) this._time = timestamp;
+            let seg = floor((timestamp - this._time) / this._delay);
+            if (seg > this.currentFrame) {
+                this.currentFrame = seg;
+                callback({
+                    time: timestamp,
+                    frame: this.currentFrame
+                })
+            }
+            reqAF = requestAnimationFrame(this._loop);
+        };
+
+        this.isAnimating = false;
+
+        this.start = () => {
+            if (!this.isAnimating) {
+                this.isAnimating = true;
+                reqAF = requestAnimationFrame(this._loop);
+            }
+        };
+
+        this.stop = () => {
+            if (this.isAnimating) {
+                cancelAnimationFrame(reqAF);
+                this.isAnimating = false;
+                this._time = null;
+                this.currentFrame = -1;
+            }
+        };
+    }
+
+    public get fps() {
+        return this._fps;
+    }
+
+    public set fps(v: number) {
+        this._fps = v;
+        this._delay = 1000 / this._fps;
+        this.currentFrame = -1;
+        this._time = null;
+    }
+}
+
 class DV {
     public ctx: CanvasRenderingContext2D | null;
     public canvas: HTMLCanvasElement;
@@ -166,13 +284,6 @@ class DV {
     public fontSize: number;
     public fontFamily: string;
     public lineHeight: number;
-    public keyIsPressed: boolean;
-    public altIsPressed: boolean;
-    public shiftIsPressed: boolean;
-    public ctrlIsPressed: boolean;
-    public keyPressed: string | null;
-    public onKeyDown: (key: string) => void;
-    public onKeyUp: (key: string) => void;
 
     constructor(canvas: HTMLCanvasElement, noLoop = false) {
         this.canvas = canvas;
@@ -188,30 +299,6 @@ class DV {
         this.fontSize = 24;
         this.fontFamily = 'sans-serif';
         this.lineHeight = 1.1;
-        this.keyIsPressed = false;
-        this.altIsPressed = false;
-        this.shiftIsPressed = false;
-        this.ctrlIsPressed = false;
-        this.keyPressed = null;
-        this.onKeyDown = function (key) {};
-        this.onKeyUp = function (key) {};
-        this.canvas.tabIndex = 1; // to make it focusable
-        this.canvas.addEventListener('keydown', (e) => {
-            this.keyIsPressed = true;
-            if (e.key === 'Alt') this.altIsPressed = true;
-            if (e.key === 'Shift') this.shiftIsPressed = true;
-            if (e.key === 'Control') this.ctrlIsPressed = true;
-            this.keyPressed = e.key;
-            this.onKeyDown(e.key);
-        });
-        this.canvas.addEventListener('keyup', (e) => {
-            this.keyIsPressed = false;
-            if (e.key === 'Alt') this.altIsPressed = false;
-            if (e.key === 'Shift') this.shiftIsPressed = false;
-            if (e.key === 'Control') this.ctrlIsPressed = false;
-            this.keyPressed = null;
-            this.onKeyUp(e.key);
-        });
     }
 
     public commitShape() {
@@ -240,7 +327,7 @@ export function cursor(cursorType: Cursor): void {
 }
 
 
-export function setContextDefault() {
+function setContextDefault(): void {
     if (!!dV.canvas) {
         dV.ctx = dV.canvas.getContext('2d');
         height = dV.canvas.height;
@@ -1381,73 +1468,6 @@ export function playSound(sound: any) {
     sound.play();
 }
 
-//---------------------------------------------------//
-/* ANIMATION */
-//---------------------------------------------------//
-
-interface TimeFrame {
-    time: number,
-    frame: number
-}
-
-class AnimationCtrl {
-    fps: number;
-    delay: number;
-    currentFrame: number;
-    isAnimating: boolean;
-    loop: (x: number) => void;
-    frameRate: (x: number) => void;
-    start: () => void;
-    stop: () => void;
-
-    constructor(callback: (TimeFrame: TimeFrame) => void) {
-        this.fps = 60;
-        this.delay = 1000 / this.fps;
-        this.currentFrame = -1;
-
-        let time: number | null = null;
-        let reqAF: number;
-
-        this.loop = (timestamp: number) => {
-            if (time == null) time = timestamp;
-            let seg = floor((timestamp - time) / this.delay);
-            if (seg > this.currentFrame) {
-                this.currentFrame = seg;
-                callback({
-                    time: timestamp,
-                    frame: this.currentFrame
-                })
-            }
-            reqAF = requestAnimationFrame(this.loop);
-        };
-
-        this.isAnimating = false;
-
-        this.frameRate = newfps => {
-            this.fps = newfps;
-            this.delay = 1000 / this.fps;
-            this.currentFrame = -1;
-            time = null;
-        };
-
-        this.start = () => {
-            if (!this.isAnimating) {
-                this.isAnimating = true;
-                reqAF = requestAnimationFrame(this.loop);
-            }
-        };
-
-        this.stop = () => {
-            if (this.isAnimating) {
-                cancelAnimationFrame(reqAF);
-                this.isAnimating = false;
-                time = null;
-                this.currentFrame = -1;
-            }
-        };
-    }
-}
-
 // Preloader
 
 interface AssetsItem {
@@ -1598,8 +1618,3 @@ export function addAsset(asset: AssetsItem): void {
     assetList.push(asset);
 }
 
-interface assetsObject {
-    [key: string]: any
-}
-
-export let assets: assetsObject = {};
