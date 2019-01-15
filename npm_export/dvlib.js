@@ -143,22 +143,52 @@ var Mouse = (function () {
     return Mouse;
 }());
 var DV = (function () {
-    function DV(canvas, _noLoop) {
-        if (_noLoop === void 0) { _noLoop = false; }
+    function DV(canvas, noLoop) {
+        if (noLoop === void 0) { noLoop = false; }
+        var _this = this;
         this.canvas = canvas;
         this.ctx = this.canvas.getContext('2d');
         this.dpi = 300;
-        this.noLoop = _noLoop;
+        this.noLoop = noLoop;
         this.withFill = true;
         this.withStroke = true;
-        this.currentFill = '#437aa9';
-        this.currentStroke = '#02020e';
+        this.currentFill = exports.blueLight;
+        this.currentStroke = exports.coldGrayDark;
         this.fontStyle = 'normal';
         this.fontWeight = 'normal';
         this.fontSize = 24;
         this.fontFamily = 'sans-serif';
         this.lineHeight = 1.1;
-        this.animation = null;
+        this.keyIsPressed = false;
+        this.altIsPressed = false;
+        this.shiftIsPressed = false;
+        this.ctrlIsPressed = false;
+        this.keyPressed = null;
+        this.onKeyDown = function (key) { };
+        this.onKeyUp = function (key) { };
+        this.canvas.tabIndex = 1;
+        this.canvas.addEventListener('keydown', function (e) {
+            _this.keyIsPressed = true;
+            if (e.key === 'Alt')
+                _this.altIsPressed = true;
+            if (e.key === 'Shift')
+                _this.shiftIsPressed = true;
+            if (e.key === 'Control')
+                _this.ctrlIsPressed = true;
+            _this.keyPressed = e.key;
+            _this.onKeyDown(e.key);
+        });
+        this.canvas.addEventListener('keyup', function (e) {
+            _this.keyIsPressed = false;
+            if (e.key === 'Alt')
+                _this.altIsPressed = false;
+            if (e.key === 'Shift')
+                _this.shiftIsPressed = false;
+            if (e.key === 'Control')
+                _this.ctrlIsPressed = false;
+            _this.keyPressed = null;
+            _this.onKeyUp(e.key);
+        });
     }
     DV.prototype.commitShape = function () {
         if (this.withFill && !!this.ctx)
