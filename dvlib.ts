@@ -44,7 +44,7 @@ export function initMouse() {
     }
 }
 
-export function createCanvas(target: HTMLElement) {
+export function createCanvas(target: HTMLElement): void {
     dV = new DV(document.createElement('canvas'));
     target.appendChild(dV.canvas);
     setContextDefault();
@@ -56,7 +56,7 @@ export function selectCanvas(id: string): void {
     setContextDefault();
 }
 
-export function resizeCanvas(w: number, h: number, canvas: HTMLCanvasElement = dV.canvas) {
+export function resizeCanvas(w: number, h: number, canvas: HTMLCanvasElement = dV.canvas): void {
     canvas.setAttribute('width', str(w));
     canvas.setAttribute('height', str(h));
     setContextDefault();
