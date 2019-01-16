@@ -2,6 +2,7 @@
 
 export function dvStart(setup?: () => void, draw?: () => void, events?: () => void,
                         loadAssets?: () => void) {
+    assets = {};
     if (loadAssets != undefined) loadAssets();
     if (assetList.length > 0) {
         preloader.on('complete', onCompletePreloader); // on complete listener
@@ -10,7 +11,7 @@ export function dvStart(setup?: () => void, draw?: () => void, events?: () => vo
         dVrun(setup, draw, events);
     }
 
-    function onCompletePreloader() {
+    function onCompletePreloader(): void {
         for (let a of assetList) {
             assets[a.id] = preloader.getResult(a.id);
         }
@@ -19,39 +20,36 @@ export function dvStart(setup?: () => void, draw?: () => void, events?: () => vo
 }
 
 function dVrun(setup?: () => void, draw?: () => void, events?: () => void) {
+    if (animation == undefined) {
+        animation = new AnimationCtrl(() => {
+            sAttr();
+            if (draw != undefined) draw();
+            rAttr();
+        });
+    }
     if (setup != undefined) setup();
-    initMouse();
+    if (mouse == undefined) mouse = new Mouse(dV.canvas);
     if (events != undefined) events();
     if (dV.noLoop) {
         sAttr();
         if (draw != undefined) draw();
         rAttr();
     } else {
-        if (animation == undefined) {
-            animation = new AnimationCtrl(() => {
-                sAttr();
-                if (draw != undefined) draw();
-                rAttr();
-            });
-            animation.start();
-        }
-    }
-}
-
-export function initMouse() {
-    if (mouse == undefined) {
-        mouse = new Mouse(dV.canvas);
+        animation.start();
     }
 }
 
 export function createCanvas(target: HTMLElement): void {
-    dV = new DV(document.createElement('canvas'));
+    let cnv = document.createElement('canvas');
+    keyboard = new Keyboard(cnv);   
+    dV = new DV(cnv);
     target.appendChild(dV.canvas);
     setContextDefault();
 }
 
 export function selectCanvas(id: string): void {
     let cnv = <HTMLCanvasElement>document.getElementById(id);
+    keyboard = new Keyboard(cnv);
     dV = new DV(cnv);
     setContextDefault();
 }
@@ -68,13 +66,25 @@ interface ColorRGB {
     b: number
 }
 
+interface assetsObject {
+    [key: string]: any
+}
+
+interface TimeFrame {
+    time: number,
+    frame: number
+}
+
+let dV: DV;
+
 // Global variables
 export let
-    dV: DV,
     width: number,
     height: number,
+    keyboard: Keyboard,
     mouse: Mouse,
-    animation: AnimationCtrl;
+    animation: AnimationCtrl,
+    assets: assetsObject;
 
 let assetList: AssetsItem[] = [];
 
@@ -85,11 +95,11 @@ class Mouse {
     private _px: number;
     private _py: number;
     public isPressed: boolean;
-    public mouseWheel: (e: MouseWheelEvent) => void;
-    public mouseDown: () => void;
-    public mouseUp: () => void;
-    public mouseClick: () => void;
-    public mouseDblClick: () => void;
+    public wheel: (e: MouseWheelEvent) => void;
+    public down: () => void;
+    public up: () => void;
+    public click: () => void;
+    public dblClick: () => void;
 
     constructor(canvas: HTMLCanvasElement) {
         this._canvas = canvas;
@@ -98,32 +108,32 @@ class Mouse {
         this._px = 0;
         this._py = 0;
         this.isPressed = false;
-        this.mouseWheel = function (e) {};
-        this.mouseDown = function () {};
-        this.mouseUp = function () {};
-        this.mouseClick = function () {};
-        this.mouseDblClick = function () {};
+        this.wheel = function (e) {};
+        this.down = function () {};
+        this.up = function () {};
+        this.click = function () {};
+        this.dblClick = function () {};
 
         this._canvas.addEventListener('mousemove', (e: MouseEvent) => {
             this._updateMousePos(canvas, e);
         });
         this._canvas.addEventListener('wheel', (e: WheelEvent) => {
             this._updateMousePos(canvas, e);
-            this.mouseWheel(e);
+            this.wheel(e);
         });
         this._canvas.addEventListener('mousedown', () => {
             this.isPressed = true;
-            this.mouseDown();
+            this.down();
         });
         this._canvas.addEventListener('mouseup', () => {
             this.isPressed = false;
-            this.mouseUp();
+            this.up();
         });
         this._canvas.addEventListener('click', () => {
-            this.mouseClick();
+            this.click();
         });
         this._canvas.addEventListener('dblclick', () => {
-            this.mouseDblClick();
+            this.dblClick();
         });
     }
 
@@ -152,6 +162,112 @@ class Mouse {
     }
 }
 
+
+class Keyboard {
+    public keyIsPressed: boolean;
+    public altIsPressed: boolean;
+    public shiftIsPressed: boolean;
+    public ctrlIsPressed: boolean;
+    public keyPressed: string | null;
+    public keyDown: (key: string) => void;
+    public keyUp: (key: string) => void;
+    private _canvas: HTMLCanvasElement;
+
+    constructor(canvas: HTMLCanvasElement) {
+        this._canvas = canvas;
+        this.keyIsPressed = false;
+        this.altIsPressed = false;
+        this.shiftIsPressed = false;
+        this.ctrlIsPressed = false;
+        this.keyPressed = null;
+        this.keyDown = function (key) { };
+        this.keyUp = function (key) { };
+        this._canvas.tabIndex = 1; // to make it focusable
+        this._canvas.addEventListener('keydown', (e) => {
+            this.keyIsPressed = true;
+            if (e.key === 'Alt') this.altIsPressed = true;
+            if (e.key === 'Shift') this.shiftIsPressed = true;
+            if (e.key === 'Control') this.ctrlIsPressed = true;
+            this.keyPressed = e.key;
+            this.keyDown(e.key);
+        });
+        this._canvas.addEventListener('keyup', (e) => {
+            this.keyIsPressed = false;
+            if (e.key === 'Alt') this.altIsPressed = false;
+            if (e.key === 'Shift') this.shiftIsPressed = false;
+            if (e.key === 'Control') this.ctrlIsPressed = false;
+            this.keyPressed = null;
+            this.keyUp(e.key);
+        });
+    }
+}
+
+class AnimationCtrl {
+    private _fps: number;
+    private _delay: number;
+    private _time: number | null;
+    private _loop: (x: number) => void;
+    public currentFrame: number;
+    public isAnimating: boolean;
+    public start: () => void;
+    public stop: () => void;
+
+    constructor(callback: (TimeFrame: TimeFrame) => void) {
+        this._fps = 60;
+        this._delay = 1000 / this._fps;
+        this.currentFrame = -1;
+
+        this._time = null;
+        let reqAF: number;
+
+        this._loop = (timestamp: number) => {
+            if (this._time == null) this._time = timestamp;
+            let seg = floor((timestamp - this._time) / this._delay);
+            if (seg > this.currentFrame) {
+                this.currentFrame = seg;
+                callback({
+                    time: timestamp,
+                    frame: this.currentFrame
+                })
+            }
+            reqAF = requestAnimationFrame(this._loop);
+        };
+
+        this.isAnimating = false;
+
+        this.start = () => {
+            if (!this.isAnimating) {
+                this.isAnimating = true;
+                reqAF = requestAnimationFrame(this._loop);
+            }
+        };
+
+        this.stop = () => {
+            if (this.isAnimating) {
+                cancelAnimationFrame(reqAF);
+                this.isAnimating = false;
+                this._time = null;
+                this.currentFrame = -1;
+            }
+        };
+    }
+
+    public get fps() {
+        if (this.isAnimating) {
+            return this._fps;
+        } else {
+            return 0;
+        }
+    }
+
+    public set fps(v: number) {
+        this._fps = v;
+        this._delay = 1000 / this._fps;
+        this.currentFrame = -1;
+        this._time = null;
+    }
+}
+
 class DV {
     public ctx: CanvasRenderingContext2D | null;
     public canvas: HTMLCanvasElement;
@@ -166,13 +282,6 @@ class DV {
     public fontSize: number;
     public fontFamily: string;
     public lineHeight: number;
-    public keyIsPressed: boolean;
-    public altIsPressed: boolean;
-    public shiftIsPressed: boolean;
-    public ctrlIsPressed: boolean;
-    public keyPressed: string | null;
-    public onKeyDown: (key: string) => void;
-    public onKeyUp: (key: string) => void;
 
     constructor(canvas: HTMLCanvasElement, noLoop = false) {
         this.canvas = canvas;
@@ -188,30 +297,6 @@ class DV {
         this.fontSize = 24;
         this.fontFamily = 'sans-serif';
         this.lineHeight = 1.1;
-        this.keyIsPressed = false;
-        this.altIsPressed = false;
-        this.shiftIsPressed = false;
-        this.ctrlIsPressed = false;
-        this.keyPressed = null;
-        this.onKeyDown = function (key) {};
-        this.onKeyUp = function (key) {};
-        this.canvas.tabIndex = 1; // to make it focusable
-        this.canvas.addEventListener('keydown', (e) => {
-            this.keyIsPressed = true;
-            if (e.key === 'Alt') this.altIsPressed = true;
-            if (e.key === 'Shift') this.shiftIsPressed = true;
-            if (e.key === 'Control') this.ctrlIsPressed = true;
-            this.keyPressed = e.key;
-            this.onKeyDown(e.key);
-        });
-        this.canvas.addEventListener('keyup', (e) => {
-            this.keyIsPressed = false;
-            if (e.key === 'Alt') this.altIsPressed = false;
-            if (e.key === 'Shift') this.shiftIsPressed = false;
-            if (e.key === 'Control') this.ctrlIsPressed = false;
-            this.keyPressed = null;
-            this.onKeyUp(e.key);
-        });
     }
 
     public commitShape() {
@@ -240,7 +325,7 @@ export function cursor(cursorType: Cursor): void {
 }
 
 
-export function setContextDefault() {
+function setContextDefault(): void {
     if (!!dV.canvas) {
         dV.ctx = dV.canvas.getContext('2d');
         height = dV.canvas.height;
@@ -261,7 +346,7 @@ export function translate(x: number, y: number): void {
 }
 
 export function rotate(angle: number): void {
-    if (!!dV.ctx) dV.ctx.rotate(angle);
+    if (!!dV.ctx) dV.ctx.rotate(-angle);
 }
 
 export function scale(x: number, y: number): void {
@@ -369,6 +454,16 @@ export function fill(col: string, alpha: number = 1): void {
 
 export function noFill(): void {
     dV.withFill = false;
+}
+
+export function shadow(color: string, level: number,
+    offsetX: number = 0, offsetY: number = 0): void {
+    if (!!dV.ctx) {
+        dV.ctx.shadowColor = color;
+        dV.ctx.shadowBlur = level;
+        dV.ctx.shadowOffsetX = offsetX;
+        dV.ctx.shadowOffsetY = offsetY;
+    }
 }
 
 /* Shapes */
@@ -666,16 +761,17 @@ export function blend(color1: string, color2: string, proportion: number): strin
     }
 }
 
-/* Others */
-export function shadow(color: string, level: number,
-    offsetX: number = 0, offsetY: number = 0): void {
-    if (!!dV.ctx) {
-        dV.ctx.shadowColor = color;
-        dV.ctx.shadowBlur = level;
-        dV.ctx.shadowOffsetX = offsetX;
-        dV.ctx.shadowOffsetY = offsetY;
-    }
+export function randomColor(): string {
+    let r: string = randomInt(0, 255).toString(16);
+    if (r.length == 1) r = '0' + r;
+    let g: string = randomInt(0, 255).toString(16);
+    if (g.length == 1) g = '0' + g;
+    let b: string = randomInt(0, 255).toString(16);
+    if (b.length == 1) b = '0' + b;
+    return '#' + r + g + b;
 }
+
+/* Assets */
 
 export enum ImgOrigin {
     bLeft,
@@ -741,6 +837,200 @@ export function placeImage(img: any, x: number, y: number, origin: ImgOrigin,
     }
 }
 
+export function playSound(sound: any) {
+    sound.muted = false;
+    sound.load();
+    sound.play();
+}
+
+//---------------------------------------------------//
+/* TYPOGRAPHY */
+//---------------------------------------------------//
+
+export function text(text: string, x: number, y: number) {
+    let lines = text.split('\n');
+    let lineY = -y;
+    if (!!dV.ctx) {
+        sAttr();
+        scale(1, -1);
+        for (let i = 0; i < lines.length; i++) {
+            dV.ctx.fillText(lines[i], x, lineY);
+            lineY += dV.fontSize * dV.lineHeight;
+        }
+        rAttr();
+    }
+
+}
+
+export function textSize(size: number): void {
+    dV.fontSize = size;
+    if (!!dV.ctx) {
+        setFont();
+    }
+}
+
+export function checkTextSize(): number {
+    return dV.fontSize;
+}
+
+export function textWidth(text: string): number {
+    if (!!dV.ctx) {
+        return dV.ctx.measureText(text).width;
+    } else {
+        return 0;
+    }
+}
+
+export function textDim(text: string): {
+    w: number,
+    h: number
+} {
+    let lines = text.split('\n');
+    let wSize = 0;
+    let hSize = 0;
+    if (!!dV.ctx) {
+        for (let i = 0; i < lines.length; i++) {
+            wSize = max([wSize, dV.ctx.measureText(lines[i]).width]);
+            hSize += dV.fontSize * dV.lineHeight;
+        }
+    }
+    hSize = hSize - (dV.fontSize * dV.lineHeight - dV.fontSize);
+    return {
+        w: wSize,
+        h: hSize
+    };
+}
+
+export enum HAlignment {
+    left,
+    right,
+    center,
+    start,
+    end
+}
+
+export enum VAlignment {
+    top,
+    hanging,
+    middle,
+    alphabetic,
+    ideographic,
+    bottom
+}
+
+export function textAlign(h: HAlignment, v?: VAlignment): void {
+    if (!!dV.ctx) {
+        const optionsH: any[] = ['left', 'right', 'center', 'start', 'end'];
+        const optionsV: any[] = ['top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'];
+        dV.ctx.textAlign = optionsH[h];
+        if (v !== undefined) dV.ctx.textBaseline = optionsV[v];
+    }
+}
+
+function setFont(): void {
+    if (!!dV.ctx) {
+        dV.ctx.font = dV.fontStyle + ' ' + dV.fontWeight + ' ' + dV.fontSize + 'px ' + dV.fontFamily;
+    }
+}
+
+
+export function fontStyle(style?: string): void | string {
+    if (style) {
+        dV.fontStyle = style;
+        if (!!dV.ctx) {
+            setFont();
+        }
+    } else {
+        return dV.fontStyle;
+    }
+}
+
+export function fontWeight(weight?: string): void | string {
+    if (weight) {
+        dV.fontWeight = weight;
+        if (!!dV.ctx) {
+            setFont();
+        }
+    } else {
+        return dV.fontWeight;
+    }
+}
+
+export function fontFamily(family?: string): void | string {
+    if (family) {
+        dV.fontFamily = family;
+        if (!!dV.ctx) {
+            setFont();
+        }
+    } else {
+        return dV.fontFamily;
+    }
+}
+
+export function lineHeight(height: number): void {
+    dV.lineHeight = height;
+}
+
+export function checkLineHeight(): number {
+    return dV.lineHeight;
+}
+
+export function textOnArc(text: string, x: number, y: number, r: number, startA: number,
+    align: HAlignment = HAlignment.center, outside: boolean = true,
+    inward: boolean = true, kerning: number = 0): number {
+    if (!!dV.ctx) {
+        let clockwise = (align === HAlignment.left) ? 1 : -1; // draw clockwise if right. Else counterclockwise
+        if (!outside) r -= dV.fontSize;
+        if (((align === HAlignment.center || align === HAlignment.right) && inward) ||
+            (align === HAlignment.left && !inward)) text = text.split('').reverse().join('');
+        sAttr();
+        if (!!dV.ctx) dV.ctx.translate(x, y);
+        let _startA = startA;
+        startA += HALF_PI;
+        if (!inward) startA += PI;
+        dV.ctx.textBaseline = 'middle';
+        dV.ctx.textAlign = 'center';
+        if (align === HAlignment.center) {
+            for (let i = 0; i < text.length; i++) {
+                let charWidth = dV.ctx.measureText(text[i]).width;
+                startA += ((charWidth + (i === text.length - 1 ? 0 : kerning)) /
+                    (r - dV.fontSize)) / 2 * -clockwise;
+            }
+        }
+        let tempA = 0;
+        dV.ctx.rotate(startA);
+        for (let i = 0; i < text.length; i++) {
+            let charWidth = dV.ctx.measureText(text[i]).width;
+            dV.ctx.rotate((charWidth / 2) / (r - dV.fontSize) * clockwise);
+            dV.ctx.fillText(text[i], 0, (inward ? 1 : -1) * (0 - r + dV.fontSize / 2));
+
+            dV.ctx.rotate((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
+            tempA += ((charWidth / 2) / (r - dV.fontSize) * clockwise) +
+                ((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
+        }
+        rAttr();
+        return _startA + tempA;
+    } else {
+        return 0;
+    }
+}
+
+export function number2str(x: number, radix: number = 10): string {
+    return x.toString(radix);
+}
+
+export function thousandSep(x: number, sep: string): string {
+    let s: string = number2str(x);
+    let st: string[] = s.split('.');
+    let st1 = st[0];
+    let st2 = st.length > 1 ? '.' + st[1] : '';
+    let rgx: RegExp = /(\d+)(\d{3})/;
+    while (rgx.test(st1)) {
+        st1 = st1.replace(rgx, '$1' + sep + '$2');
+    }
+    return st1 + st2;
+}
+
 //---------------------------------------------------//
 /* MATH */
 //---------------------------------------------------//
@@ -757,10 +1047,6 @@ export let sin = Math.sin,
     acos = Math.acos,
     atan = Math.atan,
     atan2 = Math.atan2;
-
-export function deg2rad(v: number): number {
-    return v * PI / 180;
-}
 
 /* Geometry */
 
@@ -885,6 +1171,11 @@ export function dist(x1: number, y1: number, x2: number, y2: number): number {
 }
 
 /* Conversion */
+
+export function deg2rad(v: number): number {
+    return v * PI / 180;
+}
+
 export function int(s: string, radix: number = 10): number {
     return parseInt(s, radix);
 }
@@ -920,7 +1211,7 @@ export function round(x: number, decimal?: number): number { // round
     }
 }
 
-export function roundStr(x: number, decimal: number): string {
+export function round2str(x: number, decimal: number): string {
     let s = number2str(round(x, decimal));
     let ss: string[] = s.split('.');
     let missing0: number = 0;
@@ -1182,271 +1473,10 @@ export function ordinalScale(d: any[], padding: number, resultMin: number,
 }
 
 //---------------------------------------------------//
-/* TYPOGRAPHY */
-//---------------------------------------------------//
-
-export function number2str(x: number, radix: number = 10): string {
-    return x.toString(radix);
-}
-
-export function thousandSep(x: number, sep: string): string {
-    let s: string = number2str(x);
-    let st: string[] = s.split('.');
-    let st1 = st[0];
-    let st2 = st.length > 1 ? '.' + st[1] : '';
-    let rgx: RegExp = /(\d+)(\d{3})/;
-    while (rgx.test(st1)) {
-        st1 = st1.replace(rgx, '$1' + sep + '$2');
-    }
-    return st1 + st2;
-}
-
-export function text(text: string, x: number, y: number) {
-    let lines = text.split('\n');
-    let lineY = -y;
-    if (!!dV.ctx) {
-        sAttr();
-        scale(1, -1);
-        for (let i = 0; i < lines.length; i++) {
-            dV.ctx.fillText(lines[i], x, lineY);
-            lineY += dV.fontSize * dV.lineHeight;
-        }
-        rAttr();
-    }
-
-}
-
-export function textSize(size: number): void {
-    dV.fontSize = size;
-    if (!!dV.ctx) {
-        setFont();
-    }
-}
-
-export function checkTextSize(): number {
-    return dV.fontSize;
-}
-
-export function textWidth(text: string): number {
-    if (!!dV.ctx) {
-        return dV.ctx.measureText(text).width;
-    } else {
-        return 0;
-    }
-}
-
-export function textDim(text: string): {
-    w: number,
-    h: number
-} {
-    let lines = text.split('\n');
-    let wSize = 0;
-    let hSize = 0;
-    if (!!dV.ctx) {
-        for (let i = 0; i < lines.length; i++) {
-            wSize = max([wSize, dV.ctx.measureText(lines[i]).width]);
-            hSize += dV.fontSize * dV.lineHeight;
-        }
-    }
-    hSize = hSize - (dV.fontSize * dV.lineHeight - dV.fontSize);
-    return {
-        w: wSize,
-        h: hSize
-    };
-}
-
-export enum HAlignment {
-    left,
-    right,
-    center,
-    start,
-    end
-}
-
-export enum VAlignment {
-    top,
-    hanging,
-    middle,
-    alphabetic,
-    ideographic,
-    bottom
-}
-
-export function textAlign(h: HAlignment, v?: VAlignment): void {
-    if (!!dV.ctx) {
-        const optionsH: any[] = ['left', 'right', 'center', 'start', 'end'];
-        const optionsV: any[] = ['top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'];
-        dV.ctx.textAlign = optionsH[h];
-        if (v !== undefined) dV.ctx.textBaseline = optionsV[v];
-    }
-}
-
-export function setFont(): void {
-    if (!!dV.ctx) {
-        dV.ctx.font = dV.fontStyle + ' ' + dV.fontWeight + ' ' + dV.fontSize + 'px ' + dV.fontFamily;
-    }
-}
-
-
-export function fontStyle(style?: string): void | string {
-    if (style) {
-        dV.fontStyle = style;
-        if (!!dV.ctx) {
-            setFont();
-        }
-    } else {
-        return dV.fontStyle;
-    }
-}
-
-export function fontWeight(weight?: string): void | string {
-    if (weight) {
-        dV.fontWeight = weight;
-        if (!!dV.ctx) {
-            setFont();
-        }
-    } else {
-        return dV.fontWeight;
-    }
-}
-
-export function fontFamily(family?: string): void | string {
-    if (family) {
-        dV.fontFamily = family;
-        if (!!dV.ctx) {
-            setFont();
-        }
-    } else {
-        return dV.fontFamily;
-    }
-}
-
-export function lineHeight(height: number): void {
-    dV.lineHeight = height;
-}
-
-export function checkLineHeight(): number {
-    return dV.lineHeight;
-}
-
-export function textOnArc(text: string, x: number, y: number, r: number, startA: number,
-    align: HAlignment = HAlignment.center, outside: boolean = true,
-    inward: boolean = true, kerning: number = 0): number {
-    if (!!dV.ctx) {
-        let clockwise = (align === HAlignment.left) ? 1 : -1; // draw clockwise if right. Else counterclockwise
-        if (!outside) r -= dV.fontSize;
-        if (((align === HAlignment.center || align === HAlignment.right) && inward) ||
-            (align === HAlignment.left && !inward)) text = text.split('').reverse().join('');
-        sAttr();
-        if (!!dV.ctx) dV.ctx.translate(x, y);
-        let _startA = startA;
-        startA += HALF_PI;
-        if (!inward) startA += PI;
-        dV.ctx.textBaseline = 'middle';
-        dV.ctx.textAlign = 'center';
-        if (align === HAlignment.center) {
-            for (let i = 0; i < text.length; i++) {
-                let charWidth = dV.ctx.measureText(text[i]).width;
-                startA += ((charWidth + (i === text.length - 1 ? 0 : kerning)) /
-                    (r - dV.fontSize)) / 2 * -clockwise;
-            }
-        }
-        let tempA = 0;
-        dV.ctx.rotate(startA);
-        for (let i = 0; i < text.length; i++) {
-            let charWidth = dV.ctx.measureText(text[i]).width;
-            dV.ctx.rotate((charWidth / 2) / (r - dV.fontSize) * clockwise);
-            dV.ctx.fillText(text[i], 0, (inward ? 1 : -1) * (0 - r + dV.fontSize / 2));
-
-            dV.ctx.rotate((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
-            tempA += ((charWidth / 2) / (r - dV.fontSize) * clockwise) +
-                ((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
-        }
-        rAttr();
-        return _startA + tempA;
-    } else {
-        return 0;
-    }
-}
-
-//---------------------------------------------------//
 /* Control */
 //---------------------------------------------------//
 
 export let prnt = Function.prototype.bind.call(console.log, console, 'dvlib >> ');
-
-export function playSound(sound: any) {
-    sound.muted = false;
-    sound.load();
-    sound.play();
-}
-
-//---------------------------------------------------//
-/* ANIMATION */
-//---------------------------------------------------//
-
-interface TimeFrame {
-    time: number,
-    frame: number
-}
-
-class AnimationCtrl {
-    fps: number;
-    delay: number;
-    currentFrame: number;
-    isAnimating: boolean;
-    loop: (x: number) => void;
-    frameRate: (x: number) => void;
-    start: () => void;
-    stop: () => void;
-
-    constructor(callback: (TimeFrame: TimeFrame) => void) {
-        this.fps = 60;
-        this.delay = 1000 / this.fps;
-        this.currentFrame = -1;
-
-        let time: number | null = null;
-        let reqAF: number;
-
-        this.loop = (timestamp: number) => {
-            if (time == null) time = timestamp;
-            let seg = floor((timestamp - time) / this.delay);
-            if (seg > this.currentFrame) {
-                this.currentFrame = seg;
-                callback({
-                    time: timestamp,
-                    frame: this.currentFrame
-                })
-            }
-            reqAF = requestAnimationFrame(this.loop);
-        };
-
-        this.isAnimating = false;
-
-        this.frameRate = newfps => {
-            this.fps = newfps;
-            this.delay = 1000 / this.fps;
-            this.currentFrame = -1;
-            time = null;
-        };
-
-        this.start = () => {
-            if (!this.isAnimating) {
-                this.isAnimating = true;
-                reqAF = requestAnimationFrame(this.loop);
-            }
-        };
-
-        this.stop = () => {
-            if (this.isAnimating) {
-                cancelAnimationFrame(reqAF);
-                this.isAnimating = false;
-                time = null;
-                this.currentFrame = -1;
-            }
-        };
-    }
-}
 
 // Preloader
 
@@ -1597,9 +1627,3 @@ let preloader: Preloader = new Preloader();
 export function addAsset(asset: AssetsItem): void {
     assetList.push(asset);
 }
-
-interface assetsObject {
-    [key: string]: any
-}
-
-export let assets: assetsObject = {};
