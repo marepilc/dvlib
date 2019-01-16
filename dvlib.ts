@@ -11,7 +11,7 @@ export function dvStart(setup?: () => void, draw?: () => void, events?: () => vo
         dVrun(setup, draw, events);
     }
 
-    function onCompletePreloader() {
+    function onCompletePreloader(): void {
         for (let a of assetList) {
             assets[a.id] = preloader.getResult(a.id);
         }
@@ -20,28 +20,22 @@ export function dvStart(setup?: () => void, draw?: () => void, events?: () => vo
 }
 
 function dVrun(setup?: () => void, draw?: () => void, events?: () => void) {
+    if (animation == undefined) {
+        animation = new AnimationCtrl(() => {
+            sAttr();
+            if (draw != undefined) draw();
+            rAttr();
+        });
+    }
     if (setup != undefined) setup();
-    initMouse();
+    if (mouse == undefined) mouse = new Mouse(dV.canvas);
     if (events != undefined) events();
     if (dV.noLoop) {
         sAttr();
         if (draw != undefined) draw();
         rAttr();
     } else {
-        if (animation == undefined) {
-            animation = new AnimationCtrl(() => {
-                sAttr();
-                if (draw != undefined) draw();
-                rAttr();
-            });
-            animation.start();
-        }
-    }
-}
-
-function initMouse() {
-    if (mouse == undefined) {
-        mouse = new Mouse(dV.canvas);
+        animation.start();
     }
 }
 
@@ -259,7 +253,11 @@ class AnimationCtrl {
     }
 
     public get fps() {
-        return this._fps;
+        if (this.isAnimating) {
+            return this._fps;
+        } else {
+            return 0;
+        }
     }
 
     public set fps(v: number) {
@@ -348,7 +346,7 @@ export function translate(x: number, y: number): void {
 }
 
 export function rotate(angle: number): void {
-    if (!!dV.ctx) dV.ctx.rotate(angle);
+    if (!!dV.ctx) dV.ctx.rotate(-angle);
 }
 
 export function scale(x: number, y: number): void {
@@ -456,6 +454,16 @@ export function fill(col: string, alpha: number = 1): void {
 
 export function noFill(): void {
     dV.withFill = false;
+}
+
+export function shadow(color: string, level: number,
+    offsetX: number = 0, offsetY: number = 0): void {
+    if (!!dV.ctx) {
+        dV.ctx.shadowColor = color;
+        dV.ctx.shadowBlur = level;
+        dV.ctx.shadowOffsetX = offsetX;
+        dV.ctx.shadowOffsetY = offsetY;
+    }
 }
 
 /* Shapes */
@@ -753,16 +761,17 @@ export function blend(color1: string, color2: string, proportion: number): strin
     }
 }
 
-/* Others */
-export function shadow(color: string, level: number,
-    offsetX: number = 0, offsetY: number = 0): void {
-    if (!!dV.ctx) {
-        dV.ctx.shadowColor = color;
-        dV.ctx.shadowBlur = level;
-        dV.ctx.shadowOffsetX = offsetX;
-        dV.ctx.shadowOffsetY = offsetY;
-    }
+export function randomColor(): string {
+    let r: string = randomInt(0, 255).toString(16);
+    if (r.length == 1) r = '0' + r;
+    let g: string = randomInt(0, 255).toString(16);
+    if (g.length == 1) g = '0' + g;
+    let b: string = randomInt(0, 255).toString(16);
+    if (b.length == 1) b = '0' + b;
+    return '#' + r + g + b;
 }
+
+/* Assets */
 
 export enum ImgOrigin {
     bLeft,
@@ -828,6 +837,200 @@ export function placeImage(img: any, x: number, y: number, origin: ImgOrigin,
     }
 }
 
+export function playSound(sound: any) {
+    sound.muted = false;
+    sound.load();
+    sound.play();
+}
+
+//---------------------------------------------------//
+/* TYPOGRAPHY */
+//---------------------------------------------------//
+
+export function text(text: string, x: number, y: number) {
+    let lines = text.split('\n');
+    let lineY = -y;
+    if (!!dV.ctx) {
+        sAttr();
+        scale(1, -1);
+        for (let i = 0; i < lines.length; i++) {
+            dV.ctx.fillText(lines[i], x, lineY);
+            lineY += dV.fontSize * dV.lineHeight;
+        }
+        rAttr();
+    }
+
+}
+
+export function textSize(size: number): void {
+    dV.fontSize = size;
+    if (!!dV.ctx) {
+        setFont();
+    }
+}
+
+export function checkTextSize(): number {
+    return dV.fontSize;
+}
+
+export function textWidth(text: string): number {
+    if (!!dV.ctx) {
+        return dV.ctx.measureText(text).width;
+    } else {
+        return 0;
+    }
+}
+
+export function textDim(text: string): {
+    w: number,
+    h: number
+} {
+    let lines = text.split('\n');
+    let wSize = 0;
+    let hSize = 0;
+    if (!!dV.ctx) {
+        for (let i = 0; i < lines.length; i++) {
+            wSize = max([wSize, dV.ctx.measureText(lines[i]).width]);
+            hSize += dV.fontSize * dV.lineHeight;
+        }
+    }
+    hSize = hSize - (dV.fontSize * dV.lineHeight - dV.fontSize);
+    return {
+        w: wSize,
+        h: hSize
+    };
+}
+
+export enum HAlignment {
+    left,
+    right,
+    center,
+    start,
+    end
+}
+
+export enum VAlignment {
+    top,
+    hanging,
+    middle,
+    alphabetic,
+    ideographic,
+    bottom
+}
+
+export function textAlign(h: HAlignment, v?: VAlignment): void {
+    if (!!dV.ctx) {
+        const optionsH: any[] = ['left', 'right', 'center', 'start', 'end'];
+        const optionsV: any[] = ['top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'];
+        dV.ctx.textAlign = optionsH[h];
+        if (v !== undefined) dV.ctx.textBaseline = optionsV[v];
+    }
+}
+
+function setFont(): void {
+    if (!!dV.ctx) {
+        dV.ctx.font = dV.fontStyle + ' ' + dV.fontWeight + ' ' + dV.fontSize + 'px ' + dV.fontFamily;
+    }
+}
+
+
+export function fontStyle(style?: string): void | string {
+    if (style) {
+        dV.fontStyle = style;
+        if (!!dV.ctx) {
+            setFont();
+        }
+    } else {
+        return dV.fontStyle;
+    }
+}
+
+export function fontWeight(weight?: string): void | string {
+    if (weight) {
+        dV.fontWeight = weight;
+        if (!!dV.ctx) {
+            setFont();
+        }
+    } else {
+        return dV.fontWeight;
+    }
+}
+
+export function fontFamily(family?: string): void | string {
+    if (family) {
+        dV.fontFamily = family;
+        if (!!dV.ctx) {
+            setFont();
+        }
+    } else {
+        return dV.fontFamily;
+    }
+}
+
+export function lineHeight(height: number): void {
+    dV.lineHeight = height;
+}
+
+export function checkLineHeight(): number {
+    return dV.lineHeight;
+}
+
+export function textOnArc(text: string, x: number, y: number, r: number, startA: number,
+    align: HAlignment = HAlignment.center, outside: boolean = true,
+    inward: boolean = true, kerning: number = 0): number {
+    if (!!dV.ctx) {
+        let clockwise = (align === HAlignment.left) ? 1 : -1; // draw clockwise if right. Else counterclockwise
+        if (!outside) r -= dV.fontSize;
+        if (((align === HAlignment.center || align === HAlignment.right) && inward) ||
+            (align === HAlignment.left && !inward)) text = text.split('').reverse().join('');
+        sAttr();
+        if (!!dV.ctx) dV.ctx.translate(x, y);
+        let _startA = startA;
+        startA += HALF_PI;
+        if (!inward) startA += PI;
+        dV.ctx.textBaseline = 'middle';
+        dV.ctx.textAlign = 'center';
+        if (align === HAlignment.center) {
+            for (let i = 0; i < text.length; i++) {
+                let charWidth = dV.ctx.measureText(text[i]).width;
+                startA += ((charWidth + (i === text.length - 1 ? 0 : kerning)) /
+                    (r - dV.fontSize)) / 2 * -clockwise;
+            }
+        }
+        let tempA = 0;
+        dV.ctx.rotate(startA);
+        for (let i = 0; i < text.length; i++) {
+            let charWidth = dV.ctx.measureText(text[i]).width;
+            dV.ctx.rotate((charWidth / 2) / (r - dV.fontSize) * clockwise);
+            dV.ctx.fillText(text[i], 0, (inward ? 1 : -1) * (0 - r + dV.fontSize / 2));
+
+            dV.ctx.rotate((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
+            tempA += ((charWidth / 2) / (r - dV.fontSize) * clockwise) +
+                ((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
+        }
+        rAttr();
+        return _startA + tempA;
+    } else {
+        return 0;
+    }
+}
+
+export function number2str(x: number, radix: number = 10): string {
+    return x.toString(radix);
+}
+
+export function thousandSep(x: number, sep: string): string {
+    let s: string = number2str(x);
+    let st: string[] = s.split('.');
+    let st1 = st[0];
+    let st2 = st.length > 1 ? '.' + st[1] : '';
+    let rgx: RegExp = /(\d+)(\d{3})/;
+    while (rgx.test(st1)) {
+        st1 = st1.replace(rgx, '$1' + sep + '$2');
+    }
+    return st1 + st2;
+}
+
 //---------------------------------------------------//
 /* MATH */
 //---------------------------------------------------//
@@ -844,10 +1047,6 @@ export let sin = Math.sin,
     acos = Math.acos,
     atan = Math.atan,
     atan2 = Math.atan2;
-
-export function deg2rad(v: number): number {
-    return v * PI / 180;
-}
 
 /* Geometry */
 
@@ -972,6 +1171,11 @@ export function dist(x1: number, y1: number, x2: number, y2: number): number {
 }
 
 /* Conversion */
+
+export function deg2rad(v: number): number {
+    return v * PI / 180;
+}
+
 export function int(s: string, radix: number = 10): number {
     return parseInt(s, radix);
 }
@@ -1007,7 +1211,7 @@ export function round(x: number, decimal?: number): number { // round
     }
 }
 
-export function roundStr(x: number, decimal: number): string {
+export function round2str(x: number, decimal: number): string {
     let s = number2str(round(x, decimal));
     let ss: string[] = s.split('.');
     let missing0: number = 0;
@@ -1269,204 +1473,10 @@ export function ordinalScale(d: any[], padding: number, resultMin: number,
 }
 
 //---------------------------------------------------//
-/* TYPOGRAPHY */
-//---------------------------------------------------//
-
-export function number2str(x: number, radix: number = 10): string {
-    return x.toString(radix);
-}
-
-export function thousandSep(x: number, sep: string): string {
-    let s: string = number2str(x);
-    let st: string[] = s.split('.');
-    let st1 = st[0];
-    let st2 = st.length > 1 ? '.' + st[1] : '';
-    let rgx: RegExp = /(\d+)(\d{3})/;
-    while (rgx.test(st1)) {
-        st1 = st1.replace(rgx, '$1' + sep + '$2');
-    }
-    return st1 + st2;
-}
-
-export function text(text: string, x: number, y: number) {
-    let lines = text.split('\n');
-    let lineY = -y;
-    if (!!dV.ctx) {
-        sAttr();
-        scale(1, -1);
-        for (let i = 0; i < lines.length; i++) {
-            dV.ctx.fillText(lines[i], x, lineY);
-            lineY += dV.fontSize * dV.lineHeight;
-        }
-        rAttr();
-    }
-
-}
-
-export function textSize(size: number): void {
-    dV.fontSize = size;
-    if (!!dV.ctx) {
-        setFont();
-    }
-}
-
-export function checkTextSize(): number {
-    return dV.fontSize;
-}
-
-export function textWidth(text: string): number {
-    if (!!dV.ctx) {
-        return dV.ctx.measureText(text).width;
-    } else {
-        return 0;
-    }
-}
-
-export function textDim(text: string): {
-    w: number,
-    h: number
-} {
-    let lines = text.split('\n');
-    let wSize = 0;
-    let hSize = 0;
-    if (!!dV.ctx) {
-        for (let i = 0; i < lines.length; i++) {
-            wSize = max([wSize, dV.ctx.measureText(lines[i]).width]);
-            hSize += dV.fontSize * dV.lineHeight;
-        }
-    }
-    hSize = hSize - (dV.fontSize * dV.lineHeight - dV.fontSize);
-    return {
-        w: wSize,
-        h: hSize
-    };
-}
-
-export enum HAlignment {
-    left,
-    right,
-    center,
-    start,
-    end
-}
-
-export enum VAlignment {
-    top,
-    hanging,
-    middle,
-    alphabetic,
-    ideographic,
-    bottom
-}
-
-export function textAlign(h: HAlignment, v?: VAlignment): void {
-    if (!!dV.ctx) {
-        const optionsH: any[] = ['left', 'right', 'center', 'start', 'end'];
-        const optionsV: any[] = ['top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'];
-        dV.ctx.textAlign = optionsH[h];
-        if (v !== undefined) dV.ctx.textBaseline = optionsV[v];
-    }
-}
-
-export function setFont(): void {
-    if (!!dV.ctx) {
-        dV.ctx.font = dV.fontStyle + ' ' + dV.fontWeight + ' ' + dV.fontSize + 'px ' + dV.fontFamily;
-    }
-}
-
-
-export function fontStyle(style?: string): void | string {
-    if (style) {
-        dV.fontStyle = style;
-        if (!!dV.ctx) {
-            setFont();
-        }
-    } else {
-        return dV.fontStyle;
-    }
-}
-
-export function fontWeight(weight?: string): void | string {
-    if (weight) {
-        dV.fontWeight = weight;
-        if (!!dV.ctx) {
-            setFont();
-        }
-    } else {
-        return dV.fontWeight;
-    }
-}
-
-export function fontFamily(family?: string): void | string {
-    if (family) {
-        dV.fontFamily = family;
-        if (!!dV.ctx) {
-            setFont();
-        }
-    } else {
-        return dV.fontFamily;
-    }
-}
-
-export function lineHeight(height: number): void {
-    dV.lineHeight = height;
-}
-
-export function checkLineHeight(): number {
-    return dV.lineHeight;
-}
-
-export function textOnArc(text: string, x: number, y: number, r: number, startA: number,
-    align: HAlignment = HAlignment.center, outside: boolean = true,
-    inward: boolean = true, kerning: number = 0): number {
-    if (!!dV.ctx) {
-        let clockwise = (align === HAlignment.left) ? 1 : -1; // draw clockwise if right. Else counterclockwise
-        if (!outside) r -= dV.fontSize;
-        if (((align === HAlignment.center || align === HAlignment.right) && inward) ||
-            (align === HAlignment.left && !inward)) text = text.split('').reverse().join('');
-        sAttr();
-        if (!!dV.ctx) dV.ctx.translate(x, y);
-        let _startA = startA;
-        startA += HALF_PI;
-        if (!inward) startA += PI;
-        dV.ctx.textBaseline = 'middle';
-        dV.ctx.textAlign = 'center';
-        if (align === HAlignment.center) {
-            for (let i = 0; i < text.length; i++) {
-                let charWidth = dV.ctx.measureText(text[i]).width;
-                startA += ((charWidth + (i === text.length - 1 ? 0 : kerning)) /
-                    (r - dV.fontSize)) / 2 * -clockwise;
-            }
-        }
-        let tempA = 0;
-        dV.ctx.rotate(startA);
-        for (let i = 0; i < text.length; i++) {
-            let charWidth = dV.ctx.measureText(text[i]).width;
-            dV.ctx.rotate((charWidth / 2) / (r - dV.fontSize) * clockwise);
-            dV.ctx.fillText(text[i], 0, (inward ? 1 : -1) * (0 - r + dV.fontSize / 2));
-
-            dV.ctx.rotate((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
-            tempA += ((charWidth / 2) / (r - dV.fontSize) * clockwise) +
-                ((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
-        }
-        rAttr();
-        return _startA + tempA;
-    } else {
-        return 0;
-    }
-}
-
-//---------------------------------------------------//
 /* Control */
 //---------------------------------------------------//
 
 export let prnt = Function.prototype.bind.call(console.log, console, 'dvlib >> ');
-
-export function playSound(sound: any) {
-    sound.muted = false;
-    sound.load();
-    sound.play();
-}
 
 // Preloader
 
@@ -1617,4 +1627,3 @@ let preloader: Preloader = new Preloader();
 export function addAsset(asset: AssetsItem): void {
     assetList.push(asset);
 }
-

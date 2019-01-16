@@ -1,5 +1,15 @@
 # Changelog
 
+## version 1.1.2
+
+### Added
+- function **randomColor**.
+
+### Changed
+- **AnimationCtrl** --- added possibility to set initial fps inside the setup function, i.e. `animation.fps = 30`.
+- function **roundStr** renamed to **round2str**.
+- function **rotate** rotates the canvas clockwise.
+
 ## version 1.1.1
 - bug fix
 
