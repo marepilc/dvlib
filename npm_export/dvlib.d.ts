@@ -1,9 +1,15 @@
 export declare function dvStart(setup?: () => void, draw?: () => void, events?: () => void, loadAssets?: () => void): void;
-export declare function initMouse(): void;
 export declare function createCanvas(target: HTMLElement): void;
 export declare function selectCanvas(id: string): void;
 export declare function resizeCanvas(w: number, h: number, canvas?: HTMLCanvasElement): void;
-export declare let dV: DV, width: number, height: number, mouse: Mouse, animation: AnimationCtrl;
+interface assetsObject {
+    [key: string]: any;
+}
+interface TimeFrame {
+    time: number;
+    frame: number;
+}
+export declare let width: number, height: number, keyboard: Keyboard, mouse: Mouse, animation: AnimationCtrl, assets: assetsObject;
 declare class Mouse {
     private _canvas;
     private _x;
@@ -11,11 +17,11 @@ declare class Mouse {
     private _px;
     private _py;
     isPressed: boolean;
-    mouseWheel: (e: MouseWheelEvent) => void;
-    mouseDown: () => void;
-    mouseUp: () => void;
-    mouseClick: () => void;
-    mouseDblClick: () => void;
+    wheel: (e: MouseWheelEvent) => void;
+    down: () => void;
+    up: () => void;
+    click: () => void;
+    dblClick: () => void;
     constructor(canvas: HTMLCanvasElement);
     private _updateMousePos;
     readonly x: number;
@@ -23,29 +29,28 @@ declare class Mouse {
     readonly px: number;
     readonly py: number;
 }
-declare class DV {
-    ctx: CanvasRenderingContext2D | null;
-    canvas: HTMLCanvasElement;
-    dpi: number;
-    noLoop: boolean;
-    withFill: boolean;
-    withStroke: boolean;
-    currentFill: string;
-    currentStroke: string;
-    fontStyle: string;
-    fontWeight: string;
-    fontSize: number;
-    fontFamily: string;
-    lineHeight: number;
+declare class Keyboard {
     keyIsPressed: boolean;
     altIsPressed: boolean;
     shiftIsPressed: boolean;
     ctrlIsPressed: boolean;
     keyPressed: string | null;
-    onKeyDown: (key: string) => void;
-    onKeyUp: (key: string) => void;
-    constructor(canvas: HTMLCanvasElement, noLoop?: boolean);
-    commitShape(): void;
+    keyDown: (key: string) => void;
+    keyUp: (key: string) => void;
+    private _canvas;
+    constructor(canvas: HTMLCanvasElement);
+}
+declare class AnimationCtrl {
+    private _fps;
+    private _delay;
+    private _time;
+    private _loop;
+    currentFrame: number;
+    isAnimating: boolean;
+    start: () => void;
+    stop: () => void;
+    constructor(callback: (TimeFrame: TimeFrame) => void);
+    fps: number;
 }
 export declare enum Cursor {
     default = 0,
@@ -82,7 +87,6 @@ export declare enum Cursor {
     none = 31
 }
 export declare function cursor(cursorType: Cursor): void;
-export declare function setContextDefault(): void;
 export declare function translate(x: number, y: number): void;
 export declare function rotate(angle: number): void;
 export declare function scale(x: number, y: number): void;
@@ -110,6 +114,7 @@ export declare function dashLine(line: number, space: number, offset?: number): 
 export declare function solidLine(): void;
 export declare function fill(col: string, alpha?: number): void;
 export declare function noFill(): void;
+export declare function shadow(color: string, level: number, offsetX?: number, offsetY?: number): void;
 export declare function point(x: number, y: number): void;
 export declare function line(x1: number, y1: number, x2: number, y2: number): void;
 export declare function arc(x: number, y: number, r: number, angle1: number, angle2: number): void;
@@ -143,7 +148,7 @@ export declare const redLight = "#AA5957";
 export declare const blueDark = "#395465";
 export declare const blueLight = "#567F98";
 export declare function blend(color1: string, color2: string, proportion: number): string;
-export declare function shadow(color: string, level: number, offsetX?: number, offsetY?: number): void;
+export declare function randomColor(): string;
 export declare enum ImgOrigin {
     bLeft = 0,
     bRight = 1,
@@ -156,9 +161,41 @@ export declare enum ImgOrigin {
     mCenter = 8
 }
 export declare function placeImage(img: any, x: number, y: number, origin: ImgOrigin, w?: number, h?: number): void;
+export declare function playSound(sound: any): void;
+export declare function text(text: string, x: number, y: number): void;
+export declare function textSize(size: number): void;
+export declare function checkTextSize(): number;
+export declare function textWidth(text: string): number;
+export declare function textDim(text: string): {
+    w: number;
+    h: number;
+};
+export declare enum HAlignment {
+    left = 0,
+    right = 1,
+    center = 2,
+    start = 3,
+    end = 4
+}
+export declare enum VAlignment {
+    top = 0,
+    hanging = 1,
+    middle = 2,
+    alphabetic = 3,
+    ideographic = 4,
+    bottom = 5
+}
+export declare function textAlign(h: HAlignment, v?: VAlignment): void;
+export declare function fontStyle(style?: string): void | string;
+export declare function fontWeight(weight?: string): void | string;
+export declare function fontFamily(family?: string): void | string;
+export declare function lineHeight(height: number): void;
+export declare function checkLineHeight(): number;
+export declare function textOnArc(text: string, x: number, y: number, r: number, startA: number, align?: HAlignment, outside?: boolean, inward?: boolean, kerning?: number): number;
+export declare function number2str(x: number, radix?: number): string;
+export declare function thousandSep(x: number, sep: string): string;
 export declare const E: number, PI: number, TWO_PI: number, HALF_PI: number, PHI: number;
 export declare let sin: (x: number) => number, cos: (x: number) => number, tan: (x: number) => number, asin: (x: number) => number, acos: (x: number) => number, atan: (x: number) => number, atan2: (y: number, x: number) => number;
-export declare function deg2rad(v: number): number;
 export declare class Vector {
     private _x;
     private _y;
@@ -183,13 +220,14 @@ export declare class Vector {
     limit(limitScalar: number): void;
 }
 export declare function dist(x1: number, y1: number, x2: number, y2: number): number;
+export declare function deg2rad(v: number): number;
 export declare function int(s: string, radix?: number): number;
 export declare let str: any;
 export declare function mm2px(v: number): number;
 export declare function px2mm(v: number): number;
 export declare function hexStr(v: number): string;
 export declare function round(x: number, decimal?: number): number;
-export declare function roundStr(x: number, decimal: number): string;
+export declare function round2str(x: number, decimal: number): string;
 export declare let floor: (x: number) => number;
 export declare let ceil: (x: number) => number;
 export declare function constrain(v: number, l1: number, l2: number): number;
@@ -231,63 +269,10 @@ export declare function unique(array: any[]): any[];
 export declare function fibonacci(n: number): number[];
 export declare function linearScale(dataMin: number, dataMax: number, resultMin: number, resultMax: number): (x: number) => number;
 export declare function ordinalScale(d: any[], padding: number, resultMin: number, resultMax: number): (x: number) => number;
-export declare function number2str(x: number, radix?: number): string;
-export declare function thousandSep(x: number, sep: string): string;
-export declare function text(text: string, x: number, y: number): void;
-export declare function textSize(size: number): void;
-export declare function checkTextSize(): number;
-export declare function textWidth(text: string): number;
-export declare function textDim(text: string): {
-    w: number;
-    h: number;
-};
-export declare enum HAlignment {
-    left = 0,
-    right = 1,
-    center = 2,
-    start = 3,
-    end = 4
-}
-export declare enum VAlignment {
-    top = 0,
-    hanging = 1,
-    middle = 2,
-    alphabetic = 3,
-    ideographic = 4,
-    bottom = 5
-}
-export declare function textAlign(h: HAlignment, v?: VAlignment): void;
-export declare function setFont(): void;
-export declare function fontStyle(style?: string): void | string;
-export declare function fontWeight(weight?: string): void | string;
-export declare function fontFamily(family?: string): void | string;
-export declare function lineHeight(height: number): void;
-export declare function checkLineHeight(): number;
-export declare function textOnArc(text: string, x: number, y: number, r: number, startA: number, align?: HAlignment, outside?: boolean, inward?: boolean, kerning?: number): number;
 export declare let prnt: any;
-export declare function playSound(sound: any): void;
-interface TimeFrame {
-    time: number;
-    frame: number;
-}
-declare class AnimationCtrl {
-    fps: number;
-    delay: number;
-    currentFrame: number;
-    isAnimating: boolean;
-    loop: (x: number) => void;
-    frameRate: (x: number) => void;
-    start: () => void;
-    stop: () => void;
-    constructor(callback: (TimeFrame: TimeFrame) => void);
-}
 interface AssetsItem {
     id: string;
     src: string;
 }
 export declare function addAsset(asset: AssetsItem): void;
-interface assetsObject {
-    [key: string]: any;
-}
-export declare let assets: assetsObject;
 export {};
