@@ -797,7 +797,7 @@ function placeImage(img, x, y, origin, w, h) {
     }
     if (!!dV.ctx) {
         sAttr();
-        scale(1, -1);
+        dV.ctx.scale(1, -1);
         switch (origin) {
             case ImgOrigin.bLeft:
                 dV.ctx.drawImage(img, _x, -_y, _w, -_h);
@@ -842,7 +842,7 @@ function text(text, x, y) {
     var lineY = -y;
     if (!!dV.ctx) {
         sAttr();
-        scale(1, -1);
+        dV.ctx.scale(1, -1);
         for (var i = 0; i < lines.length; i++) {
             dV.ctx.fillText(lines[i], x, lineY);
             lineY += dV.fontSize * dV.lineHeight;
@@ -1030,114 +1030,6 @@ function thousandSep(x, sep) {
 exports.thousandSep = thousandSep;
 exports.E = Math.E, exports.PI = Math.PI, exports.TWO_PI = Math.PI * 2, exports.HALF_PI = Math.PI / 2, exports.PHI = (1 + Math.sqrt(5)) / 2;
 exports.sin = Math.sin, exports.cos = Math.cos, exports.tan = Math.tan, exports.asin = Math.asin, exports.acos = Math.acos, exports.atan = Math.atan, exports.atan2 = Math.atan2;
-var Vector = (function () {
-    function Vector(x, y) {
-        this._x = x;
-        this._y = y;
-    }
-    Vector.prototype.set = function (x, y) {
-        this._x = x;
-        this._y = y;
-    };
-    Object.defineProperty(Vector.prototype, "x", {
-        get: function () {
-            return this._x;
-        },
-        set: function (v) {
-            this._x = v;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Vector.prototype, "y", {
-        get: function () {
-            return this._y;
-        },
-        set: function (v) {
-            this._y = v;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Vector.prototype.copy = function () {
-        return new Vector(this._x, this._y);
-    };
-    Vector.prototype.add = function (v) {
-        return new Vector(this._x + v.x, this._y + v.y);
-    };
-    Vector.prototype.addInPlace = function (v) {
-        this._x += v.x;
-        this._y += v.y;
-    };
-    Vector.prototype.sub = function (v) {
-        return new Vector(this._x - v.x, this._y - v.y);
-    };
-    Vector.prototype.subInPlace = function (v) {
-        this._x -= v.x;
-        this._y -= v.y;
-    };
-    Vector.prototype.mult = function (s) {
-        return new Vector(this._x * s, this._y * s);
-    };
-    Vector.prototype.multInPlace = function (s) {
-        this._x *= s;
-        this._y *= s;
-    };
-    Vector.prototype.div = function (s) {
-        return new Vector(this._x / s, this._y / s);
-    };
-    Vector.prototype.divInPlace = function (s) {
-        this._x /= s;
-        this._y /= s;
-    };
-    Vector.prototype.dot = function (v) {
-        return this._x * v.x + this._y * v.y;
-    };
-    Vector.prototype.norm = function () {
-        var e1 = this._x / (Math.sqrt(this._x * this._x + this.y * this.y));
-        var e2 = this._y / (Math.sqrt(this._x * this._x + this._y * this._y));
-        return new Vector(e1, e2);
-    };
-    Vector.prototype.normInPlace = function () {
-        var e1 = this._x / (Math.sqrt(this._x * this._x + this._y * this._y));
-        var e2 = this._y / (Math.sqrt(this._x * this._x + this._y * this._y));
-        this._x = e1;
-        this._y = e2;
-    };
-    Object.defineProperty(Vector.prototype, "direction", {
-        get: function () {
-            return Math.atan2(this._y, this._x);
-        },
-        set: function (angle) {
-            var magnitude = this.magnitude;
-            this._x = Math.cos(angle) * magnitude;
-            this._y = Math.sin(angle) * magnitude;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Vector.prototype, "magnitude", {
-        get: function () {
-            return Math.sqrt(this._x * this._x + this._y * this._y);
-        },
-        set: function (magnitude) {
-            var direction = this.direction;
-            this._x = Math.cos(direction) * magnitude;
-            this._y = Math.sin(direction) * magnitude;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Vector.prototype.limit = function (limitScalar) {
-        if (this.magnitude > limitScalar) {
-            var direction = this.direction;
-            this._x = Math.cos(direction) * limitScalar;
-            this._y = Math.sin(direction) * limitScalar;
-        }
-    };
-    return Vector;
-}());
-exports.Vector = Vector;
 function dist(x1, y1, x2, y2) {
     return exports.sqrt(exports.pow(x2 - x1, 2) + exports.pow(y2 - y1, 2));
 }
@@ -1302,6 +1194,114 @@ function stdDev(data, method) {
     return exports.sqrt(s / divider);
 }
 exports.stdDev = stdDev;
+var Vector = (function () {
+    function Vector(x, y) {
+        this._x = x;
+        this._y = y;
+    }
+    Vector.prototype.set = function (x, y) {
+        this._x = x;
+        this._y = y;
+    };
+    Object.defineProperty(Vector.prototype, "x", {
+        get: function () {
+            return this._x;
+        },
+        set: function (v) {
+            this._x = v;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Vector.prototype, "y", {
+        get: function () {
+            return this._y;
+        },
+        set: function (v) {
+            this._y = v;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Vector.prototype.copy = function () {
+        return new Vector(this._x, this._y);
+    };
+    Vector.prototype.add = function (v) {
+        return new Vector(this._x + v.x, this._y + v.y);
+    };
+    Vector.prototype.addInPlace = function (v) {
+        this._x += v.x;
+        this._y += v.y;
+    };
+    Vector.prototype.sub = function (v) {
+        return new Vector(this._x - v.x, this._y - v.y);
+    };
+    Vector.prototype.subInPlace = function (v) {
+        this._x -= v.x;
+        this._y -= v.y;
+    };
+    Vector.prototype.mult = function (s) {
+        return new Vector(this._x * s, this._y * s);
+    };
+    Vector.prototype.multInPlace = function (s) {
+        this._x *= s;
+        this._y *= s;
+    };
+    Vector.prototype.div = function (s) {
+        return new Vector(this._x / s, this._y / s);
+    };
+    Vector.prototype.divInPlace = function (s) {
+        this._x /= s;
+        this._y /= s;
+    };
+    Vector.prototype.dot = function (v) {
+        return this._x * v.x + this._y * v.y;
+    };
+    Vector.prototype.norm = function () {
+        var e1 = this._x / (Math.sqrt(this._x * this._x + this.y * this.y));
+        var e2 = this._y / (Math.sqrt(this._x * this._x + this._y * this._y));
+        return new Vector(e1, e2);
+    };
+    Vector.prototype.normInPlace = function () {
+        var e1 = this._x / (Math.sqrt(this._x * this._x + this._y * this._y));
+        var e2 = this._y / (Math.sqrt(this._x * this._x + this._y * this._y));
+        this._x = e1;
+        this._y = e2;
+    };
+    Object.defineProperty(Vector.prototype, "direction", {
+        get: function () {
+            return Math.atan2(this._y, this._x);
+        },
+        set: function (angle) {
+            var magnitude = this.magnitude;
+            this._x = Math.cos(angle) * magnitude;
+            this._y = Math.sin(angle) * magnitude;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Vector.prototype, "magnitude", {
+        get: function () {
+            return Math.sqrt(this._x * this._x + this._y * this._y);
+        },
+        set: function (magnitude) {
+            var direction = this.direction;
+            this._x = Math.cos(direction) * magnitude;
+            this._y = Math.sin(direction) * magnitude;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Vector.prototype.limit = function (limitScalar) {
+        if (this.magnitude > limitScalar) {
+            var direction = this.direction;
+            this._x = Math.cos(direction) * limitScalar;
+            this._y = Math.sin(direction) * limitScalar;
+        }
+    };
+    return Vector;
+}());
+exports.Vector = Vector;
 var Noise = (function () {
     function Noise(min, max, noiseRange) {
         this._min = min;
