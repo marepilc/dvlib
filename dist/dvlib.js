@@ -479,7 +479,7 @@ exports.line = line;
 function arc(x, y, r, angle1, angle2) {
     if (!!dV.ctx) {
         dV.ctx.beginPath();
-        dV.ctx.arc(x, y, r, angle1, angle2);
+        dV.ctx.arc(x, y, r, -angle2, angle1);
         dV.commitShape();
     }
 }
@@ -495,10 +495,13 @@ exports.circle = circle;
 function ellipse(x, y, r1, r2, angle) {
     if (angle === void 0) { angle = 0; }
     if (!!dV.ctx) {
+        sAttr();
+        translate(x, y);
+        rotate(angle);
         dV.ctx.beginPath();
         for (var i = 0; i < exports.TWO_PI; i += 0.01) {
-            var xPos = x - (r2 * exports.sin(i)) * exports.sin(angle * exports.PI) + (r1 * exports.cos(i)) * exports.cos(angle * exports.PI);
-            var yPos = y + (r1 * exports.cos(i)) * exports.sin(angle * exports.PI) + (r2 * exports.sin(i)) * exports.cos(angle * exports.PI);
+            var xPos = r1 * exports.cos(i);
+            var yPos = r2 * exports.sin(i);
             if (i === 0) {
                 dV.ctx.moveTo(xPos, yPos);
             }
@@ -507,6 +510,7 @@ function ellipse(x, y, r1, r2, angle) {
             }
         }
         dV.commitShape();
+        rAttr();
     }
 }
 exports.ellipse = ellipse;
@@ -533,8 +537,8 @@ function ring(x, y, r1, r2, angle1, angle2) {
         }
         else {
             dV.ctx.beginPath();
-            dV.ctx.arc(x, y, ro, angle1, angle2);
-            dV.ctx.arc(x, y, ri, angle2, angle1, true);
+            dV.ctx.arc(x, y, ro, -angle2, angle1);
+            dV.ctx.arc(x, y, ri, angle1, -angle2, true);
             dV.ctx.closePath();
             dV.commitShape();
         }
@@ -756,15 +760,9 @@ function blend(color1, color2, proportion) {
 }
 exports.blend = blend;
 function randomColor() {
-    var r = randomInt(0, 255).toString(16);
-    if (r.length == 1)
-        r = '0' + r;
-    var g = randomInt(0, 255).toString(16);
-    if (g.length == 1)
-        g = '0' + g;
-    var b = randomInt(0, 255).toString(16);
-    if (b.length == 1)
-        b = '0' + b;
+    var r = hexStr(randomInt(0, 255));
+    var g = hexStr(randomInt(0, 255));
+    var b = hexStr(randomInt(0, 255));
     return '#' + r + g + b;
 }
 exports.randomColor = randomColor;
@@ -854,16 +852,17 @@ function text(text, x, y) {
 }
 exports.text = text;
 function textSize(size) {
-    dV.fontSize = size;
-    if (!!dV.ctx) {
-        setFont();
+    if (size != undefined) {
+        dV.fontSize = size;
+        if (!!dV.ctx) {
+            setFont();
+        }
+    }
+    else {
+        return dV.fontSize;
     }
 }
 exports.textSize = textSize;
-function checkTextSize() {
-    return dV.fontSize;
-}
-exports.checkTextSize = checkTextSize;
 function textWidth(text) {
     if (!!dV.ctx) {
         return dV.ctx.measureText(text).width;
@@ -912,7 +911,7 @@ function textAlign(h, v) {
         var optionsH = ['left', 'right', 'center', 'start', 'end'];
         var optionsV = ['top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'];
         dV.ctx.textAlign = optionsH[h];
-        if (v !== undefined)
+        if (v != undefined)
             dV.ctx.textBaseline = optionsV[v];
     }
 }
@@ -959,13 +958,14 @@ function fontFamily(family) {
 }
 exports.fontFamily = fontFamily;
 function lineHeight(height) {
-    dV.lineHeight = height;
+    if (height != undefined) {
+        dV.lineHeight = height;
+    }
+    else {
+        return dV.lineHeight;
+    }
 }
 exports.lineHeight = lineHeight;
-function checkLineHeight() {
-    return dV.lineHeight;
-}
-exports.checkLineHeight = checkLineHeight;
 function textOnArc(text, x, y, r, startA, align, outside, inward, kerning) {
     if (align === void 0) { align = HAlignment.center; }
     if (outside === void 0) { outside = true; }
@@ -979,9 +979,8 @@ function textOnArc(text, x, y, r, startA, align, outside, inward, kerning) {
             (align === HAlignment.left && !inward))
             text = text.split('').reverse().join('');
         sAttr();
-        if (!!dV.ctx)
-            dV.ctx.translate(x, y);
-        var _startA = startA;
+        dV.ctx.translate(x, y);
+        dV.ctx.scale(1, -1);
         startA += exports.HALF_PI;
         if (!inward)
             startA += exports.PI;
@@ -1005,7 +1004,7 @@ function textOnArc(text, x, y, r, startA, align, outside, inward, kerning) {
                 ((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
         }
         rAttr();
-        return _startA + tempA;
+        return exports.abs(tempA);
     }
     else {
         return 0;
