@@ -1048,124 +1048,6 @@ export let sin = Math.sin,
     atan = Math.atan,
     atan2 = Math.atan2;
 
-/* Geometry */
-
-export class Vector {
-    private _x: number;
-    private _y: number;
-    constructor(x: number, y: number) {
-        this._x = x;
-        this._y = y;
-    }
-
-    public set(x: number, y: number) {
-        this._x = x;
-        this._y = y;
-    }
-
-
-    public get x(): number {
-        return this._x;
-    }
-
-    public get y(): number {
-        return this._y;
-    }
-
-    public set x(v: number) {
-        this._x = v;
-    }
-
-    public set y(v: number) {
-        this._y = v;
-    }
-
-    copy(): Vector {
-        return new Vector(this._x, this._y);
-    }
-
-    public add(v: Vector): Vector {
-        return new Vector(this._x + v.x, this._y + v.y);
-    }
-
-    public addInPlace(v: Vector): void {
-        this._x += v.x;
-        this._y += v.y;
-    }
-
-    public sub(v: Vector): Vector {
-        return new Vector(this._x - v.x, this._y - v.y);
-    }
-
-    public subInPlace(v: Vector): void {
-        this._x -= v.x;
-        this._y -= v.y;
-    }
-
-    public mult(s: number): Vector {
-        return new Vector(this._x * s, this._y * s);
-    }
-
-    public multInPlace(s: number): void {
-        this._x *= s;
-        this._y *= s;
-    }
-
-    public div(s: number): Vector {
-        return new Vector(this._x / s, this._y / s);
-    }
-
-    public divInPlace(s: number): void {
-        this._x /= s;
-        this._y /= s;
-    }
-
-    public dot(v: Vector): number { // dot product of two vectors
-        return this._x * v.x + this._y * v.y;
-    }
-
-    public norm(): Vector {
-        let e1 = this._x / (Math.sqrt(this._x * this._x + this.y * this.y));
-        let e2 = this._y / (Math.sqrt(this._x * this._x + this._y * this._y));
-        return new Vector(e1, e2);
-    }
-
-    public normInPlace(): void {
-        let e1 = this._x / (Math.sqrt(this._x * this._x + this._y * this._y));
-        let e2 = this._y / (Math.sqrt(this._x * this._x + this._y * this._y));
-        this._x = e1;
-        this._y = e2;
-    }
-
-    get direction(): number {
-        return Math.atan2(this._y, this._x);
-    }
-
-    set direction(angle: number) {
-        let magnitude = this.magnitude;
-        this._x = Math.cos(angle) * magnitude;
-        this._y = Math.sin(angle) * magnitude;
-    }
-
-    get magnitude(): number {
-        return Math.sqrt(this._x * this._x + this._y * this._y);
-    }
-
-    set magnitude(magnitude: number) {
-        let direction = this.direction;
-        this._x = Math.cos(direction) * magnitude;
-        this._y = Math.sin(direction) * magnitude;
-    }
-
-    public limit(limitScalar: number) {
-        if (this.magnitude > limitScalar) {
-            let direction = this.direction;
-            this._x = Math.cos(direction) * limitScalar;
-            this._y = Math.sin(direction) * limitScalar;
-        }
-    }
-}
-
 export function dist(x1: number, y1: number, x2: number, y2: number): number {
     return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
 }
@@ -1324,6 +1206,122 @@ export function stdDev(data: number[], method: SDevMethod = SDevMethod.sample): 
         divider = data.length;
     }
     return sqrt(s / divider);
+}
+
+export class Vector {
+    private _x: number;
+    private _y: number;
+    constructor(x: number, y: number) {
+        this._x = x;
+        this._y = y;
+    }
+
+    public set(x: number, y: number) {
+        this._x = x;
+        this._y = y;
+    }
+
+
+    public get x(): number {
+        return this._x;
+    }
+
+    public get y(): number {
+        return this._y;
+    }
+
+    public set x(v: number) {
+        this._x = v;
+    }
+
+    public set y(v: number) {
+        this._y = v;
+    }
+
+    copy(): Vector {
+        return new Vector(this._x, this._y);
+    }
+
+    public add(v: Vector): Vector {
+        return new Vector(this._x + v.x, this._y + v.y);
+    }
+
+    public addInPlace(v: Vector): void {
+        this._x += v.x;
+        this._y += v.y;
+    }
+
+    public sub(v: Vector): Vector {
+        return new Vector(this._x - v.x, this._y - v.y);
+    }
+
+    public subInPlace(v: Vector): void {
+        this._x -= v.x;
+        this._y -= v.y;
+    }
+
+    public mult(s: number): Vector {
+        return new Vector(this._x * s, this._y * s);
+    }
+
+    public multInPlace(s: number): void {
+        this._x *= s;
+        this._y *= s;
+    }
+
+    public div(s: number): Vector {
+        return new Vector(this._x / s, this._y / s);
+    }
+
+    public divInPlace(s: number): void {
+        this._x /= s;
+        this._y /= s;
+    }
+
+    public dot(v: Vector): number { // dot product of two vectors
+        return this._x * v.x + this._y * v.y;
+    }
+
+    public norm(): Vector {
+        let e1 = this._x / (Math.sqrt(this._x * this._x + this.y * this.y));
+        let e2 = this._y / (Math.sqrt(this._x * this._x + this._y * this._y));
+        return new Vector(e1, e2);
+    }
+
+    public normInPlace(): void {
+        let e1 = this._x / (Math.sqrt(this._x * this._x + this._y * this._y));
+        let e2 = this._y / (Math.sqrt(this._x * this._x + this._y * this._y));
+        this._x = e1;
+        this._y = e2;
+    }
+
+    get direction(): number {
+        return Math.atan2(this._y, this._x);
+    }
+
+    set direction(angle: number) {
+        let magnitude = this.magnitude;
+        this._x = Math.cos(angle) * magnitude;
+        this._y = Math.sin(angle) * magnitude;
+    }
+
+    get magnitude(): number {
+        return Math.sqrt(this._x * this._x + this._y * this._y);
+    }
+
+    set magnitude(magnitude: number) {
+        let direction = this.direction;
+        this._x = Math.cos(direction) * magnitude;
+        this._y = Math.sin(direction) * magnitude;
+    }
+
+    public limit(limitScalar: number) {
+        if (this.magnitude > limitScalar) {
+            let direction = this.direction;
+            this._x = Math.cos(direction) * limitScalar;
+            this._y = Math.sin(direction) * limitScalar;
+        }
+    }
 }
 
 /* Numbers */
