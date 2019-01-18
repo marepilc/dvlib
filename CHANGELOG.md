@@ -1,5 +1,16 @@
 # Changelog
 
+## version 1.1.3
+
+### Changed
+- function **ellipse** rewritten.
+- function **textSize** can be called without argument to check the current text size.
+- function **checkLineHeight** can be called without argument to check the current line height.
+
+### removed
+- function **checkTextSize**
+- function **checkLineHeight**
+
 ## version 1.1.2
 
 ### Added

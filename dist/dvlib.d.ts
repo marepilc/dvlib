@@ -163,8 +163,7 @@ export declare enum ImgOrigin {
 export declare function placeImage(img: any, x: number, y: number, origin: ImgOrigin, w?: number, h?: number): void;
 export declare function playSound(sound: any): void;
 export declare function text(text: string, x: number, y: number): void;
-export declare function textSize(size: number): void;
-export declare function checkTextSize(): number;
+export declare function textSize(size?: number): void | number;
 export declare function textWidth(text: string): number;
 export declare function textDim(text: string): {
     w: number;
@@ -189,8 +188,7 @@ export declare function textAlign(h: HAlignment, v?: VAlignment): void;
 export declare function fontStyle(style?: string): void | string;
 export declare function fontWeight(weight?: string): void | string;
 export declare function fontFamily(family?: string): void | string;
-export declare function lineHeight(height: number): void;
-export declare function checkLineHeight(): number;
+export declare function lineHeight(height?: number): void | number;
 export declare function textOnArc(text: string, x: number, y: number, r: number, startA: number, align?: HAlignment, outside?: boolean, inward?: boolean, kerning?: number): number;
 export declare function number2str(x: number, radix?: number): string;
 export declare function thousandSep(x: number, sep: string): string;
