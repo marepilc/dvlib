@@ -1123,7 +1123,7 @@ export function constrain(v: number, l1: number, l2: number): number {
     }
 }
 
-export function sq(v: number) {
+export function sq(v: number): number {
     return Math.pow(v, 2);
 }
 
@@ -1239,7 +1239,7 @@ export class Vector {
         this._y = v;
     }
 
-    copy(): Vector {
+    public copy(): Vector {
         return new Vector(this._x, this._y);
     }
 
@@ -1367,7 +1367,7 @@ export class Noise {
         this.nextValue();
         return round(this._value);
     }
-    nextValue(): void {
+    private nextValue(): void {
         let min0, max0;
         min0 = this._value - this._range / 2;
         max0 = this._value + this._range / 2;
@@ -1410,7 +1410,7 @@ export function shuffle(array: any[]): void {
     }
 }
 
-export function unique(array: any[]) {
+export function unique(array: any[]): any[] {
     return array.filter((value, index, self) => {
         return self.indexOf(value) === index;
     }).sort();

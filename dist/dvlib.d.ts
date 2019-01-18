@@ -194,29 +194,6 @@ export declare function number2str(x: number, radix?: number): string;
 export declare function thousandSep(x: number, sep: string): string;
 export declare const E: number, PI: number, TWO_PI: number, HALF_PI: number, PHI: number;
 export declare let sin: (x: number) => number, cos: (x: number) => number, tan: (x: number) => number, asin: (x: number) => number, acos: (x: number) => number, atan: (x: number) => number, atan2: (y: number, x: number) => number;
-export declare class Vector {
-    private _x;
-    private _y;
-    constructor(x: number, y: number);
-    set(x: number, y: number): void;
-    x: number;
-    y: number;
-    copy(): Vector;
-    add(v: Vector): Vector;
-    addInPlace(v: Vector): void;
-    sub(v: Vector): Vector;
-    subInPlace(v: Vector): void;
-    mult(s: number): Vector;
-    multInPlace(s: number): void;
-    div(s: number): Vector;
-    divInPlace(s: number): void;
-    dot(v: Vector): number;
-    norm(): Vector;
-    normInPlace(): void;
-    direction: number;
-    magnitude: number;
-    limit(limitScalar: number): void;
-}
 export declare function dist(x1: number, y1: number, x2: number, y2: number): number;
 export declare function deg2rad(v: number): number;
 export declare function int(s: string, radix?: number): number;
@@ -246,6 +223,29 @@ declare enum SDevMethod {
     population = 1
 }
 export declare function stdDev(data: number[], method?: SDevMethod): number;
+export declare class Vector {
+    private _x;
+    private _y;
+    constructor(x: number, y: number);
+    set(x: number, y: number): void;
+    x: number;
+    y: number;
+    copy(): Vector;
+    add(v: Vector): Vector;
+    addInPlace(v: Vector): void;
+    sub(v: Vector): Vector;
+    subInPlace(v: Vector): void;
+    mult(s: number): Vector;
+    multInPlace(s: number): void;
+    div(s: number): Vector;
+    divInPlace(s: number): void;
+    dot(v: Vector): number;
+    norm(): Vector;
+    normInPlace(): void;
+    direction: number;
+    magnitude: number;
+    limit(limitScalar: number): void;
+}
 export declare class Noise {
     private _min;
     private _max;
@@ -257,7 +257,7 @@ export declare class Noise {
     noiseRange: number;
     value: number;
     readonly intValue: number;
-    nextValue(): void;
+    private nextValue;
 }
 export declare function randomInt(a: number, b: number): number;
 export declare function choose(numbers: any[]): any;
