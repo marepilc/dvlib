@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
 function dvStart(setup, draw, events, loadAssets) {
     exports.assets = {};
@@ -23,10 +23,10 @@ exports.dvStart = dvStart;
 function dVrun(setup, draw, events) {
     if (exports.animation == undefined) {
         exports.animation = new AnimationCtrl(function () {
-            sAttr();
+            save();
             if (draw != undefined)
                 draw();
-            rAttr();
+            restore();
         });
     }
     if (setup != undefined)
@@ -36,17 +36,19 @@ function dVrun(setup, draw, events) {
     if (events != undefined)
         events();
     if (dV.noLoop) {
-        sAttr();
+        save();
         if (draw != undefined)
             draw();
-        rAttr();
+        restore();
     }
     else {
         exports.animation.start();
     }
 }
-function createCanvas(target) {
+function createCanvas(target, id) {
     var cnv = document.createElement('canvas');
+    if (id !== undefined)
+        cnv.id = id;
     exports.keyboard = new Keyboard(cnv);
     dV = new DV(cnv);
     target.appendChild(dV.canvas);
@@ -110,7 +112,7 @@ var Mouse = (function () {
         this._py = this._y;
         var bbox = canvas.getBoundingClientRect();
         this._x = exports.abs(round((e.clientX - bbox.left) * (exports.width / bbox.width)));
-        this._y = exports.abs(round((e.clientY - bbox.bottom) * (exports.height / bbox.height)));
+        this._y = exports.abs(round((e.clientY - bbox.top) * (exports.height / bbox.height)));
     };
     Object.defineProperty(Mouse.prototype, "x", {
         get: function () {
@@ -245,8 +247,8 @@ var DV = (function () {
         this.noLoop = noLoop;
         this.withFill = true;
         this.withStroke = true;
-        this.currentFill = exports.blueLight;
-        this.currentStroke = exports.coldGrayDark;
+        this.currentFill = exports.light;
+        this.currentStroke = exports.dark;
         this.fontStyle = 'normal';
         this.fontWeight = 'normal';
         this.fontSize = 24;
@@ -317,8 +319,6 @@ function setContextDefault() {
             dV.ctx.fillStyle = dV.currentFill;
             dV.ctx.strokeStyle = dV.currentStroke;
             setFont();
-            dV.ctx.translate(0, exports.height);
-            dV.ctx.scale(1, -1);
         }
     }
 }
@@ -329,7 +329,7 @@ function translate(x, y) {
 exports.translate = translate;
 function rotate(angle) {
     if (!!dV.ctx)
-        dV.ctx.rotate(-angle);
+        dV.ctx.rotate(angle);
 }
 exports.rotate = rotate;
 function scale(x, y) {
@@ -337,16 +337,16 @@ function scale(x, y) {
         dV.ctx.scale(x, y);
 }
 exports.scale = scale;
-function sAttr() {
+function save() {
     if (!!dV.ctx)
         dV.ctx.save();
 }
-exports.sAttr = sAttr;
-function rAttr() {
+exports.save = save;
+function restore() {
     if (!!dV.ctx)
         dV.ctx.restore();
 }
-exports.rAttr = rAttr;
+exports.restore = restore;
 function staticDrawing() {
     dV.noLoop = true;
 }
@@ -356,30 +356,30 @@ function clear() {
         dV.ctx.clearRect(0, 0, exports.width, exports.height);
 }
 exports.clear = clear;
-function background(col) {
-    sAttr();
-    var c = (col.indexOf('#') === 0) ? col : '#' + col;
-    var rgx = /^#+([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/;
-    if (rgx.test(c)) {
-        if (!!dV.ctx)
-            dV.ctx.fillStyle = col;
+function background() {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
     }
-    if (!!dV.ctx)
+    save();
+    var c = color2rgba.apply(void 0, args);
+    if (!!dV.ctx) {
+        dV.ctx.fillStyle = "rgba(" + c.r + ", " + c.g + ", " + c.b + ", " + c.a + ")";
         dV.ctx.fillRect(0, 0, exports.width, exports.height);
-    rAttr();
+    }
+    restore();
 }
 exports.background = background;
-function stroke(col, alpha) {
-    if (alpha === void 0) { alpha = 1; }
-    dV.withStroke = true;
-    var c = (col.indexOf('#') === 0) ? col : '#' + col;
-    var rgx = /^#+([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/;
-    if (rgx.test(c)) {
-        var rgb = str2rgb(c);
-        if (!!dV.ctx)
-            dV.ctx.strokeStyle = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
-        dV.currentStroke = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
+function stroke() {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
     }
+    dV.withStroke = true;
+    var c = color2rgba.apply(void 0, args);
+    if (!!dV.ctx)
+        dV.ctx.strokeStyle = "rgba(" + c.r + ", " + c.g + ", " + c.b + ", " + c.a + ")";
+    dV.currentStroke = "rgba(" + c.r + ", " + c.g + ", " + c.b + ", " + c.a + ")";
 }
 exports.stroke = stroke;
 function strokeWidth(size) {
@@ -434,28 +434,30 @@ function solidLine() {
         dV.ctx.setLineDash([]);
 }
 exports.solidLine = solidLine;
-function fill(col, alpha) {
-    if (alpha === void 0) { alpha = 1; }
-    dV.withFill = true;
-    var c = (col.indexOf('#') === 0) ? col : '#' + col;
-    var rgx = /^#+([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/;
-    if (rgx.test(c)) {
-        var rgb = str2rgb(c);
-        if (!!dV.ctx)
-            dV.ctx.fillStyle = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
-        dV.currentFill = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
+function fill() {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
     }
+    dV.withFill = true;
+    var c = color2rgba.apply(void 0, args);
+    if (!!dV.ctx)
+        dV.ctx.fillStyle = "rgba(" + c.r + ", " + c.g + ", " + c.b + ", " + c.a + ")";
+    dV.currentFill = "rgba(" + c.r + ", " + c.g + ", " + c.b + ", " + c.a + ")";
 }
 exports.fill = fill;
 function noFill() {
     dV.withFill = false;
 }
 exports.noFill = noFill;
-function shadow(color, level, offsetX, offsetY) {
-    if (offsetX === void 0) { offsetX = 0; }
-    if (offsetY === void 0) { offsetY = 0; }
+function shadow(level, offsetX, offsetY) {
+    var color = [];
+    for (var _i = 3; _i < arguments.length; _i++) {
+        color[_i - 3] = arguments[_i];
+    }
+    var c = color2rgba.apply(void 0, color);
     if (!!dV.ctx) {
-        dV.ctx.shadowColor = color;
+        dV.ctx.shadowColor = "rgba(" + c.r + ", " + c.g + ", " + c.b + ", " + c.a + ")";
         dV.ctx.shadowBlur = level;
         dV.ctx.shadowOffsetX = offsetX;
         dV.ctx.shadowOffsetY = offsetY;
@@ -476,10 +478,10 @@ function line(x1, y1, x2, y2) {
     }
 }
 exports.line = line;
-function arc(x, y, r, angle1, angle2) {
+function arc(x, y, r, startAngle, endAngle, anticlockwise) {
     if (!!dV.ctx) {
         dV.ctx.beginPath();
-        dV.ctx.arc(x, y, r, -angle2, angle1);
+        dV.ctx.arc(x, y, r, startAngle, endAngle);
         dV.commitShape();
     }
 }
@@ -495,7 +497,7 @@ exports.circle = circle;
 function ellipse(x, y, r1, r2, angle) {
     if (angle === void 0) { angle = 0; }
     if (!!dV.ctx) {
-        sAttr();
+        save();
         translate(x, y);
         rotate(angle);
         dV.ctx.beginPath();
@@ -510,35 +512,35 @@ function ellipse(x, y, r1, r2, angle) {
             }
         }
         dV.commitShape();
-        rAttr();
+        restore();
     }
 }
 exports.ellipse = ellipse;
-function ring(x, y, r1, r2, angle1, angle2) {
-    if (angle1 === void 0) { angle1 = 0; }
-    if (angle2 === void 0) { angle2 = exports.TWO_PI; }
+function ring(x, y, r1, r2, startAngle, endAngle) {
+    if (startAngle === void 0) { startAngle = 0; }
+    if (endAngle === void 0) { endAngle = exports.TWO_PI; }
     if (!!dV.ctx) {
         var ro = Math.max(r1, r2);
         var ri = Math.min(r1, r2);
-        if (angle1 === 0 && angle2 === exports.TWO_PI) {
+        if (startAngle === 0 && endAngle === exports.TWO_PI) {
             dV.ctx.beginPath();
-            dV.ctx.arc(x, y, ro, angle1, angle2);
-            dV.ctx.arc(x, y, ri, angle2, angle1, true);
+            dV.ctx.arc(x, y, ro, startAngle, endAngle);
+            dV.ctx.arc(x, y, ri, endAngle, startAngle, true);
             if (dV.withFill)
                 dV.ctx.fill();
             if (dV.withStroke) {
                 dV.ctx.beginPath();
-                dV.ctx.arc(x, y, ro, angle1, angle2);
+                dV.ctx.arc(x, y, ro, startAngle, endAngle);
                 dV.ctx.stroke();
                 dV.ctx.beginPath();
-                dV.ctx.arc(x, y, ri, angle1, angle2);
+                dV.ctx.arc(x, y, ri, startAngle, endAngle);
                 dV.ctx.stroke();
             }
         }
         else {
             dV.ctx.beginPath();
-            dV.ctx.arc(x, y, ro, -angle2, angle1);
-            dV.ctx.arc(x, y, ri, angle1, -angle2, true);
+            dV.ctx.arc(x, y, ro, startAngle, endAngle);
+            dV.ctx.arc(x, y, ri, endAngle, startAngle, true);
             dV.ctx.closePath();
             dV.commitShape();
         }
@@ -569,11 +571,11 @@ function star(x, y, r1, r2, n) {
         var halfAngle = angle / 2;
         dV.ctx.beginPath();
         for (var a = 0; a < exports.TWO_PI; a += angle) {
-            var sx = x + exports.cos(a) * r2;
-            var sy = y + exports.sin(a) * r2;
+            var sx = x + exports.cos(a - exports.HALF_PI) * r2;
+            var sy = y + exports.sin(a - exports.HALF_PI) * r2;
             dV.ctx.lineTo(sx, sy);
-            sx = x + exports.cos(a + halfAngle) * r1;
-            sy = y + exports.sin(a + halfAngle) * r1;
+            sx = x + exports.cos(a - exports.HALF_PI + halfAngle) * r1;
+            sy = y + exports.sin(a - exports.HALF_PI + halfAngle) * r1;
             dV.ctx.lineTo(sx, sy);
         }
         dV.ctx.closePath();
@@ -587,8 +589,8 @@ function polygon(x, y, r, n) {
         var angle = exports.TWO_PI / n;
         dV.ctx.beginPath();
         for (var a = 0; a < exports.TWO_PI; a += angle) {
-            var sx = x + exports.cos(a) * r;
-            var sy = y + exports.sin(a) * r;
+            var sx = x + exports.cos(a - exports.HALF_PI) * r;
+            var sy = y + exports.sin(a - exports.HALF_PI) * r;
             dV.ctx.lineTo(sx, sy);
         }
         dV.ctx.closePath();
@@ -600,7 +602,7 @@ function spline(pts, tension, closed) {
     if (tension === void 0) { tension = 0.5; }
     if (closed === void 0) { closed = false; }
     if (!!dV.ctx) {
-        sAttr();
+        save();
         var cp = [];
         var n = pts.length;
         if (closed) {
@@ -641,7 +643,7 @@ function spline(pts, tension, closed) {
             dV.ctx.stroke();
             dV.ctx.closePath();
         }
-        rAttr();
+        restore();
     }
 }
 exports.spline = spline;
@@ -665,17 +667,17 @@ function bezier(x1, y1, cp1x, cp1y, cp2x, cp2y, x2, y2) {
     }
 }
 exports.bezier = bezier;
-function beginShape(x, y) {
+function beginPath(x, y) {
     if (!!dV.ctx) {
         dV.ctx.beginPath();
         dV.ctx.moveTo(x, y);
     }
 }
-exports.beginShape = beginShape;
-function endShape() {
+exports.beginPath = beginPath;
+function endPath() {
     dV.commitShape();
 }
-exports.endShape = endShape;
+exports.endPath = endPath;
 function closeShape() {
     if (!!dV.ctx) {
         dV.ctx.closePath();
@@ -703,20 +705,61 @@ function quadraticTo(cpx, cpy, x, y) {
         dV.ctx.quadraticCurveTo(cpx, cpy, x, y);
 }
 exports.quadraticTo = quadraticTo;
-exports.coldGrayDark = '#2D2F2F';
-exports.coldGrayMidDark = '#696D6D';
-exports.coldGrayMidLight = '#B0B6B6';
-exports.coldGrayLight = '#ECF4F4';
-exports.warmGrayDark = '#434240';
-exports.warmGrayMidDark = '#787672';
-exports.warmGrayMidLight = '#B4B1AB';
-exports.warmGrayLight = '#FAF6EE';
-exports.greenDark = '#3B5750';
-exports.greenLight = '#5B887C';
-exports.redDark = '#743432';
-exports.redLight = '#AA5957';
-exports.blueDark = '#395465';
-exports.blueLight = '#567F98';
+exports.light = '#EDE5DD';
+exports.dark = '#26201C';
+exports.yellow = '#ECDC21';
+exports.orange = '#E09423';
+exports.green = '#53C352';
+exports.red = '#E0533D';
+exports.blue = '#4DAFEA';
+exports.magenta = '#B34DFF';
+function color2rgba() {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
+    }
+    var argCount = arguments.length;
+    var rgbaColor = { r: 0, g: 0, b: 0, a: 1 };
+    ;
+    switch (argCount) {
+        case 1:
+            if (typeof arguments[0] === 'number') {
+                var col = round(constrain(arguments[0], 0, 255));
+                rgbaColor = { r: col, g: col, b: col, a: 1 };
+            }
+            else if (typeof arguments[0] === 'string') {
+                var col = str2rgb(arguments[0]);
+                rgbaColor = { r: col.r, g: col.g, b: col.b, a: 1 };
+            }
+            break;
+        case 2:
+            if (typeof arguments[0] === 'string' && typeof arguments[1] === 'number') {
+                var col = str2rgb(arguments[0]);
+                rgbaColor = { r: col.r, g: col.g, b: col.b, a: constrain(arguments[1], 0, 1) };
+            }
+            break;
+        case 3:
+            if (args.every(function (d) { return typeof d === 'number'; })) {
+                rgbaColor = { r: round(constrain(arguments[0], 0, 255)),
+                    g: round(constrain(arguments[1], 0, 255)),
+                    b: round(constrain(arguments[2], 0, 255)),
+                    a: 1 };
+            }
+            break;
+        case 4:
+            if (args.every(function (d) { return typeof d === 'number'; })) {
+                rgbaColor = { r: round(constrain(arguments[0], 0, 255)),
+                    g: round(constrain(arguments[1], 0, 255)),
+                    b: round(constrain(arguments[2], 0, 255)),
+                    a: constrain(arguments[1], 0, 1) };
+            }
+            break;
+        default:
+            rgbaColor = { r: 0, g: 0, b: 0, a: 1 };
+            break;
+    }
+    return rgbaColor;
+}
 function str2rgb(col) {
     var rgb = {
         r: 0,
@@ -768,15 +811,15 @@ function randomColor() {
 exports.randomColor = randomColor;
 var ImgOrigin;
 (function (ImgOrigin) {
-    ImgOrigin[ImgOrigin["bLeft"] = 0] = "bLeft";
-    ImgOrigin[ImgOrigin["bRight"] = 1] = "bRight";
-    ImgOrigin[ImgOrigin["bCenter"] = 2] = "bCenter";
-    ImgOrigin[ImgOrigin["tLeft"] = 3] = "tLeft";
-    ImgOrigin[ImgOrigin["tRight"] = 4] = "tRight";
-    ImgOrigin[ImgOrigin["tCenter"] = 5] = "tCenter";
-    ImgOrigin[ImgOrigin["mLeft"] = 6] = "mLeft";
-    ImgOrigin[ImgOrigin["mRight"] = 7] = "mRight";
-    ImgOrigin[ImgOrigin["mCenter"] = 8] = "mCenter";
+    ImgOrigin[ImgOrigin["lb"] = 0] = "lb";
+    ImgOrigin[ImgOrigin["rb"] = 1] = "rb";
+    ImgOrigin[ImgOrigin["cb"] = 2] = "cb";
+    ImgOrigin[ImgOrigin["lt"] = 3] = "lt";
+    ImgOrigin[ImgOrigin["rt"] = 4] = "rt";
+    ImgOrigin[ImgOrigin["ct"] = 5] = "ct";
+    ImgOrigin[ImgOrigin["lc"] = 6] = "lc";
+    ImgOrigin[ImgOrigin["rc"] = 7] = "rc";
+    ImgOrigin[ImgOrigin["cc"] = 8] = "cc";
 })(ImgOrigin = exports.ImgOrigin || (exports.ImgOrigin = {}));
 function placeImage(img, x, y, origin, w, h) {
     var _x = x;
@@ -796,58 +839,46 @@ function placeImage(img, x, y, origin, w, h) {
         _h = img.naturalHeight;
     }
     if (!!dV.ctx) {
-        sAttr();
-        dV.ctx.scale(1, -1);
         switch (origin) {
-            case ImgOrigin.bLeft:
-                dV.ctx.drawImage(img, _x, -_y, _w, -_h);
+            case ImgOrigin.lb:
+                dV.ctx.drawImage(img, _x, _y, _w, -_h);
                 break;
-            case ImgOrigin.bRight:
-                dV.ctx.drawImage(img, _x - _w, -_y, _w, -_h);
+            case ImgOrigin.rb:
+                dV.ctx.drawImage(img, _x - _w, _y, _w, -_h);
                 break;
-            case ImgOrigin.bCenter:
-                dV.ctx.drawImage(img, _x - _w / 2, -_y, _w, -_h);
+            case ImgOrigin.cb:
+                dV.ctx.drawImage(img, _x - _w / 2, _y, _w, -_h);
                 break;
-            case ImgOrigin.tLeft:
-                dV.ctx.drawImage(img, _x, -_y + _h, _w, -_h);
+            case ImgOrigin.lt:
+                dV.ctx.drawImage(img, _x, _y, _w, _h);
                 break;
-            case ImgOrigin.tRight:
-                dV.ctx.drawImage(img, _x - _w, -_y + _h, _w, -_h);
+            case ImgOrigin.rt:
+                dV.ctx.drawImage(img, _x - _w, _y, _w, _h);
                 break;
-            case ImgOrigin.tCenter:
-                dV.ctx.drawImage(img, _x - _w / 2, -_y + _h, _w, -_h);
+            case ImgOrigin.ct:
+                dV.ctx.drawImage(img, _x - _w / 2, _y, _w, _h);
                 break;
-            case ImgOrigin.mLeft:
-                dV.ctx.drawImage(img, _x, -_y + _h / 2, _w, -_h);
+            case ImgOrigin.lc:
+                dV.ctx.drawImage(img, _x, _y + _h / 2, _w, -_h);
                 break;
-            case ImgOrigin.mRight:
-                dV.ctx.drawImage(img, _x - _w, -_y + _h / 2, _w, -_h);
+            case ImgOrigin.rc:
+                dV.ctx.drawImage(img, _x - _w, _y + _h / 2, _w, -_h);
                 break;
-            case ImgOrigin.mCenter:
-                dV.ctx.drawImage(img, _x - _w / 2, -_y + _h / 2, _w, -_h);
+            case ImgOrigin.cc:
+                dV.ctx.drawImage(img, _x - _w / 2, _y + _h / 2, _w, -_h);
                 break;
         }
-        rAttr();
     }
 }
 exports.placeImage = placeImage;
-function playSound(sound) {
-    sound.muted = false;
-    sound.load();
-    sound.play();
-}
-exports.playSound = playSound;
 function text(text, x, y) {
     var lines = text.split('\n');
-    var lineY = -y;
+    var lineY = y;
     if (!!dV.ctx) {
-        sAttr();
-        dV.ctx.scale(1, -1);
         for (var i = 0; i < lines.length; i++) {
             dV.ctx.fillText(lines[i], x, lineY);
             lineY += dV.fontSize * dV.lineHeight;
         }
-        rAttr();
     }
 }
 exports.text = text;
@@ -889,23 +920,23 @@ function textDim(text) {
     };
 }
 exports.textDim = textDim;
-var HAlignment;
-(function (HAlignment) {
-    HAlignment[HAlignment["left"] = 0] = "left";
-    HAlignment[HAlignment["right"] = 1] = "right";
-    HAlignment[HAlignment["center"] = 2] = "center";
-    HAlignment[HAlignment["start"] = 3] = "start";
-    HAlignment[HAlignment["end"] = 4] = "end";
-})(HAlignment = exports.HAlignment || (exports.HAlignment = {}));
-var VAlignment;
-(function (VAlignment) {
-    VAlignment[VAlignment["top"] = 0] = "top";
-    VAlignment[VAlignment["hanging"] = 1] = "hanging";
-    VAlignment[VAlignment["middle"] = 2] = "middle";
-    VAlignment[VAlignment["alphabetic"] = 3] = "alphabetic";
-    VAlignment[VAlignment["ideographic"] = 4] = "ideographic";
-    VAlignment[VAlignment["bottom"] = 5] = "bottom";
-})(VAlignment = exports.VAlignment || (exports.VAlignment = {}));
+var TextAlign;
+(function (TextAlign) {
+    TextAlign[TextAlign["left"] = 0] = "left";
+    TextAlign[TextAlign["right"] = 1] = "right";
+    TextAlign[TextAlign["center"] = 2] = "center";
+    TextAlign[TextAlign["start"] = 3] = "start";
+    TextAlign[TextAlign["end"] = 4] = "end";
+})(TextAlign = exports.TextAlign || (exports.TextAlign = {}));
+var TextBaseline;
+(function (TextBaseline) {
+    TextBaseline[TextBaseline["top"] = 0] = "top";
+    TextBaseline[TextBaseline["hanging"] = 1] = "hanging";
+    TextBaseline[TextBaseline["middle"] = 2] = "middle";
+    TextBaseline[TextBaseline["alphabetic"] = 3] = "alphabetic";
+    TextBaseline[TextBaseline["ideographic"] = 4] = "ideographic";
+    TextBaseline[TextBaseline["bottom"] = 5] = "bottom";
+})(TextBaseline = exports.TextBaseline || (exports.TextBaseline = {}));
 function textAlign(h, v) {
     if (!!dV.ctx) {
         var optionsH = ['left', 'right', 'center', 'start', 'end'];
@@ -918,7 +949,7 @@ function textAlign(h, v) {
 exports.textAlign = textAlign;
 function setFont() {
     if (!!dV.ctx) {
-        dV.ctx.font = dV.fontStyle + ' ' + dV.fontWeight + ' ' + dV.fontSize + 'px ' + dV.fontFamily;
+        dV.ctx.font = dV.fontStyle + " " + dV.fontWeight + " " + dV.fontSize + "px " + dV.fontFamily;
     }
 }
 function fontStyle(style) {
@@ -966,45 +997,45 @@ function lineHeight(height) {
     }
 }
 exports.lineHeight = lineHeight;
-function textOnArc(text, x, y, r, startA, align, outside, inward, kerning) {
-    if (align === void 0) { align = HAlignment.center; }
+function textOnArc(text, x, y, r, startAngle, align, outside, inward, kerning) {
+    if (align === void 0) { align = TextAlign.center; }
     if (outside === void 0) { outside = true; }
     if (inward === void 0) { inward = true; }
     if (kerning === void 0) { kerning = 0; }
     if (!!dV.ctx) {
-        var clockwise = (align === HAlignment.left) ? 1 : -1;
+        var clockwise = (align === TextAlign.left) ? 1 : -1;
         if (!outside)
             r -= dV.fontSize;
-        if (((align === HAlignment.center || align === HAlignment.right) && inward) ||
-            (align === HAlignment.left && !inward))
+        if (((align === TextAlign.center || align === TextAlign.right) && inward) ||
+            (align === TextAlign.left && !inward))
             text = text.split('').reverse().join('');
-        sAttr();
+        save();
         dV.ctx.translate(x, y);
-        dV.ctx.scale(1, -1);
-        startA += exports.HALF_PI;
+        var _startAngle = startAngle;
+        startAngle += exports.HALF_PI;
         if (!inward)
-            startA += exports.PI;
+            startAngle += exports.PI;
         dV.ctx.textBaseline = 'middle';
         dV.ctx.textAlign = 'center';
-        if (align === HAlignment.center) {
+        if (align === TextAlign.center) {
             for (var i = 0; i < text.length; i++) {
                 var charWidth = dV.ctx.measureText(text[i]).width;
-                startA += ((charWidth + (i === text.length - 1 ? 0 : kerning)) /
+                startAngle += ((charWidth + (i === text.length - 1 ? 0 : kerning)) /
                     (r - dV.fontSize)) / 2 * -clockwise;
             }
         }
-        var tempA = 0;
-        dV.ctx.rotate(startA);
+        var tempAngle = 0;
+        dV.ctx.rotate(startAngle);
         for (var i = 0; i < text.length; i++) {
             var charWidth = dV.ctx.measureText(text[i]).width;
             dV.ctx.rotate((charWidth / 2) / (r - dV.fontSize) * clockwise);
             dV.ctx.fillText(text[i], 0, (inward ? 1 : -1) * (0 - r + dV.fontSize / 2));
             dV.ctx.rotate((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
-            tempA += ((charWidth / 2) / (r - dV.fontSize) * clockwise) +
+            tempAngle += ((charWidth / 2) / (r - dV.fontSize) * clockwise) +
                 ((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
         }
-        rAttr();
-        return exports.abs(tempA);
+        restore();
+        return _startAngle + tempAngle;
     }
     else {
         return 0;
@@ -1380,8 +1411,8 @@ function randomInt(a, b) {
     return Math.floor(Math.random() * (Math.max(a, b) - Math.min(a, b) + 1)) + Math.min(a, b);
 }
 exports.randomInt = randomInt;
-function choose(numbers) {
-    return numbers[randomInt(0, numbers.length - 1)];
+function choose(items) {
+    return items[randomInt(0, items.length - 1)];
 }
 exports.choose = choose;
 function random() {
@@ -1399,18 +1430,18 @@ function random() {
     }
 }
 exports.random = random;
-function shuffle(array) {
+function shuffle(items) {
     var j, x;
-    for (var i = array.length - 1; i > 0; i--) {
+    for (var i = items.length - 1; i > 0; i--) {
         j = Math.floor(Math.random() * (i + 1));
-        x = array[i];
-        array[i] = array[j];
-        array[j] = x;
+        x = items[i];
+        items[i] = items[j];
+        items[j] = x;
     }
 }
 exports.shuffle = shuffle;
-function unique(array) {
-    return array.filter(function (value, index, self) {
+function unique(items) {
+    return items.filter(function (value, index, self) {
         return self.indexOf(value) === index;
     }).sort();
 }
@@ -1474,6 +1505,13 @@ function ordinalScale(d, padding, resultMin, resultMax) {
 }
 exports.ordinalScale = ordinalScale;
 exports.prnt = Function.prototype.bind.call(console.log, console, 'dvlib >> ');
+function svg2img(svg) {
+    var img = new Image();
+    var blob = new Blob([svg], { type: 'image/svg+xml' });
+    img.src = URL.createObjectURL(blob);
+    return img;
+}
+exports.svg2img = svg2img;
 var Preloader = (function () {
     function Preloader() {
         this.assets = {};
@@ -1517,10 +1555,6 @@ var Preloader = (function () {
                 case 'json':
                     this.loadJson(id, src, onFinishedLoading);
                     break;
-                case 'mp3':
-                case 'wav':
-                    this.loadAudio(id, src, onFinishedLoading);
-                    break;
                 default:
                     onFinishedLoading();
                     break;
@@ -1541,16 +1575,6 @@ var Preloader = (function () {
             img.src = URL.createObjectURL(response);
             _this.assets[id] = img;
             img.onload = callback;
-        });
-    };
-    Preloader.prototype.loadAudio = function (id, src, callback) {
-        var _this = this;
-        this.request(src, 'blob', function (response) {
-            var audio = new Audio();
-            audio.src = URL.createObjectURL(response);
-            audio.muted = true;
-            _this.assets[id] = audio;
-            callback();
         });
     };
     Preloader.prototype.request = function (src, type, callback) {

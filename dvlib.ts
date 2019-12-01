@@ -1,7 +1,44 @@
-"use strict";
+'use strict';
 
-export function dvStart(setup?: () => void, draw?: () => void, events?: () => void,
-                        loadAssets?: () => void) {
+// custom types
+interface ColorRGB {
+    r: number,
+    g: number,
+    b: number
+}
+
+interface ColorRGBA {
+    r: number,
+    g: number,
+    b: number,
+    a: number
+}
+
+interface assetsObject {
+    [key: string]: any
+}
+
+interface TimeFrame {
+    time: number,
+    frame: number
+}
+
+interface AssetsItem {
+    id: string,
+    src: string
+}
+
+// Global variables
+export let
+    width: number,
+    height: number,
+    keyboard: Keyboard,
+    mouse: Mouse,
+    animation: AnimationCtrl,
+    assets: assetsObject;
+
+export function dvStart(setup?: () => void, draw?: () => void,
+                        events?: () => void, loadAssets?: () => void) {
     assets = {};
     if (loadAssets != undefined) loadAssets();
     if (assetList.length > 0) {
@@ -22,25 +59,26 @@ export function dvStart(setup?: () => void, draw?: () => void, events?: () => vo
 function dVrun(setup?: () => void, draw?: () => void, events?: () => void) {
     if (animation == undefined) {
         animation = new AnimationCtrl(() => {
-            sAttr();
+            save();
             if (draw != undefined) draw();
-            rAttr();
+            restore();
         });
     }
     if (setup != undefined) setup();
     if (mouse == undefined) mouse = new Mouse(dV.canvas);
     if (events != undefined) events();
     if (dV.noLoop) {
-        sAttr();
+        save();
         if (draw != undefined) draw();
-        rAttr();
+        restore();
     } else {
         animation.start();
     }
 }
 
-export function createCanvas(target: HTMLElement): void {
+export function createCanvas(target: HTMLElement, id?: string): void {
     let cnv = document.createElement('canvas');
+    if (id !== undefined) cnv.id = id;
     keyboard = new Keyboard(cnv);   
     dV = new DV(cnv);
     target.appendChild(dV.canvas);
@@ -60,31 +98,7 @@ export function resizeCanvas(w: number, h: number, canvas: HTMLCanvasElement = d
     setContextDefault();
 }
 
-interface ColorRGB {
-    r: number,
-    g: number,
-    b: number
-}
-
-interface assetsObject {
-    [key: string]: any
-}
-
-interface TimeFrame {
-    time: number,
-    frame: number
-}
-
 let dV: DV;
-
-// Global variables
-export let
-    width: number,
-    height: number,
-    keyboard: Keyboard,
-    mouse: Mouse,
-    animation: AnimationCtrl,
-    assets: assetsObject;
 
 let assetList: AssetsItem[] = [];
 
@@ -142,7 +156,7 @@ class Mouse {
         this._py = this._y;
         let bbox = canvas.getBoundingClientRect();
         this._x = abs(round((e.clientX - bbox.left) * (width / bbox.width)));
-        this._y = abs(round((e.clientY - bbox.bottom) * (height / bbox.height)));
+        this._y = abs(round((e.clientY - bbox.top) * (height / bbox.height)));
     }
 
     get x() {
@@ -290,8 +304,8 @@ class DV {
         this.noLoop = noLoop;
         this.withFill = true;
         this.withStroke = true;
-        this.currentFill = blueLight;
-        this.currentStroke = coldGrayDark;
+        this.currentFill = light;
+        this.currentStroke = dark;
         this.fontStyle = 'normal';
         this.fontWeight = 'normal';
         this.fontSize = 24;
@@ -315,7 +329,7 @@ export enum Cursor { // https://developer.mozilla.org/pl/docs/Web/CSS/cursor
 }
 
 export function cursor(cursorType: Cursor): void {
-    let types: any[] = ['default', 'auto', 'crosshair', 'pointer', 'move',
+    let types: string[] = ['default', 'auto', 'crosshair', 'pointer', 'move',
         'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize',
         'sw-resize', 's-resize', 'w-resize', 'text', 'wait', 'help', 'progress',
         'copy', 'alias', 'context-menu', 'cell', 'not-allowed', 'col-resize',
@@ -334,8 +348,8 @@ function setContextDefault(): void {
             dV.ctx.fillStyle = dV.currentFill;
             dV.ctx.strokeStyle = dV.currentStroke;
             setFont();
-            dV.ctx.translate(0, height);
-            dV.ctx.scale(1, -1);
+            // dV.ctx.translate(0, height);
+            // dV.ctx.scale(1, -1);
         }
     }
 }
@@ -346,18 +360,18 @@ export function translate(x: number, y: number): void {
 }
 
 export function rotate(angle: number): void {
-    if (!!dV.ctx) dV.ctx.rotate(-angle);
+    if (!!dV.ctx) dV.ctx.rotate(angle);
 }
 
 export function scale(x: number, y: number): void {
     if (!!dV.ctx) dV.ctx.scale(x, y);
 }
 
-export function sAttr(): void {
+export function save(): void {
     if (!!dV.ctx) dV.ctx.save();
 }
 
-export function rAttr(): void {
+export function restore(): void {
     if (!!dV.ctx) dV.ctx.restore();
 }
 
@@ -372,28 +386,23 @@ export function clear(): void {
     if (!!dV.ctx) dV.ctx.clearRect(0, 0, width, height);
 }
 
-export function background(col: string): void {
-    sAttr();
-    let c = (col.indexOf('#') === 0) ? col : '#' + col;
-    let rgx: RegExp = /^#+([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/;
-    if (rgx.test(c)) {
-        if (!!dV.ctx) dV.ctx.fillStyle = col;
+export function background(...args: any[]): void {
+    save();
+    let c = color2rgba(...args);
+    if (!!dV.ctx) {
+        dV.ctx.fillStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`;
+        dV.ctx.fillRect(0, 0, width, height);
     }
-    if (!!dV.ctx) dV.ctx.fillRect(0, 0, width, height);
-    rAttr();
+    restore();
 }
 
 /* stroke and fill */
 
-export function stroke(col: string, alpha: number = 1): void {
+export function stroke(...args: any[]): void {
     dV.withStroke = true;
-    let c = (col.indexOf('#') === 0) ? col : '#' + col;
-    let rgx: RegExp = /^#+([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/;
-    if (rgx.test(c)) {
-        let rgb: ColorRGB = str2rgb(c);
-        if (!!dV.ctx) dV.ctx.strokeStyle = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
-        dV.currentStroke = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
-    }
+    let c = color2rgba(...args);
+    if (!!dV.ctx) dV.ctx.strokeStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`;
+    dV.currentStroke = `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`;
 }
 
 export function strokeWidth(size: number): void {
@@ -412,7 +421,7 @@ export enum StrokeCupStyle {
 }
 
 export function strokeCup(style: StrokeCupStyle): void {
-    let types: any[] = ['butt', 'round', 'square'];
+    let types: CanvasLineCap[] = ['butt', 'round', 'square'];
     if (!!dV.ctx) dV.ctx.lineCap = types[style];
 }
 
@@ -423,7 +432,7 @@ export enum JoinStyle {
 }
 
 export function strokeJoin(style: JoinStyle, miterValue: number = 10): void {
-    let types: any[] = ['bevel', 'round', 'miter'];
+    let types: CanvasLineJoin[] = ['bevel', 'round', 'miter'];
     if (style === JoinStyle.miter) {
         if (!!dV.ctx) dV.ctx.miterLimit = miterValue;
     }
@@ -441,25 +450,21 @@ export function solidLine(): void {
     if (!!dV.ctx) dV.ctx.setLineDash([]);
 }
 
-export function fill(col: string, alpha: number = 1): void {
+export function fill(...args: any[]): void {
     dV.withFill = true;
-    let c = (col.indexOf('#') === 0) ? col : '#' + col;
-    let rgx: RegExp = /^#+([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/;
-    if (rgx.test(c)) {
-        let rgb: ColorRGB = str2rgb(c);
-        if (!!dV.ctx) dV.ctx.fillStyle = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
-        dV.currentFill = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
-    }
+    let c = color2rgba(...args);
+    if (!!dV.ctx) dV.ctx.fillStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`;
+    dV.currentFill = `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`;
 }
 
 export function noFill(): void {
     dV.withFill = false;
 }
 
-export function shadow(color: string, level: number,
-    offsetX: number = 0, offsetY: number = 0): void {
+export function shadow(level: number, offsetX: number, offsetY: number, ...color: any[]): void {
+    let c = color2rgba(...color);
     if (!!dV.ctx) {
-        dV.ctx.shadowColor = color;
+        dV.ctx.shadowColor = `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`;
         dV.ctx.shadowBlur = level;
         dV.ctx.shadowOffsetX = offsetX;
         dV.ctx.shadowOffsetY = offsetY;
@@ -480,10 +485,10 @@ export function line(x1: number, y1: number, x2: number, y2: number): void {
     }
 }
 
-export function arc(x: number, y: number, r: number, angle1: number, angle2: number): void {
+export function arc(x: number, y: number, r: number, startAngle: number, endAngle: number, anticlockwise?: boolean): void {
     if (!!dV.ctx) {
         dV.ctx.beginPath();
-        dV.ctx.arc(x, y, r, -angle2, angle1);
+        dV.ctx.arc(x, y, r, startAngle, endAngle);
         dV.commitShape();
     }
 }
@@ -498,7 +503,7 @@ export function circle(x: number, y: number, r: number): void {
 
 export function ellipse(x: number, y: number, r1: number, r2: number, angle: number = 0): void {
     if (!!dV.ctx) {
-        sAttr();
+        save();
         translate(x, y);
         rotate(angle);
         dV.ctx.beginPath();
@@ -512,32 +517,32 @@ export function ellipse(x: number, y: number, r1: number, r2: number, angle: num
             }
         }
         dV.commitShape();
-        rAttr();
+        restore();
     }
 }
 
 export function ring(x: number, y: number, r1: number, r2: number,
-    angle1: number = 0, angle2: number = TWO_PI): void {
+    startAngle: number = 0, endAngle: number = TWO_PI): void {
     if (!!dV.ctx) {
         let ro = Math.max(r1, r2);
         let ri = Math.min(r1, r2);
-        if (angle1 === 0 && angle2 === TWO_PI) {
+        if (startAngle === 0 && endAngle === TWO_PI) {
             dV.ctx.beginPath();
-            dV.ctx.arc(x, y, ro, angle1, angle2);
-            dV.ctx.arc(x, y, ri, angle2, angle1, true);
+            dV.ctx.arc(x, y, ro, startAngle, endAngle);
+            dV.ctx.arc(x, y, ri, endAngle, startAngle, true);
             if (dV.withFill) dV.ctx.fill();
             if (dV.withStroke) {
                 dV.ctx.beginPath();
-                dV.ctx.arc(x, y, ro, angle1, angle2);
+                dV.ctx.arc(x, y, ro, startAngle, endAngle);
                 dV.ctx.stroke();
                 dV.ctx.beginPath();
-                dV.ctx.arc(x, y, ri, angle1, angle2);
+                dV.ctx.arc(x, y, ri, startAngle, endAngle);
                 dV.ctx.stroke();
             }
         } else {
             dV.ctx.beginPath();
-            dV.ctx.arc(x, y, ro, -angle2, angle1);
-            dV.ctx.arc(x, y, ri, angle1, -angle2, true);
+            dV.ctx.arc(x, y, ro, startAngle, endAngle);
+            dV.ctx.arc(x, y, ri, endAngle, startAngle, true);
             dV.ctx.closePath();
             dV.commitShape();
         }
@@ -560,17 +565,20 @@ export function rect(x: number, y: number, w: number, h: number, r: number = 0):
     }
 }
 
+    
+
+
 export function star(x: number, y: number, r1: number, r2: number, n: number = 5): void {
     if (!!dV.ctx) {
         let angle = TWO_PI / n;
         let halfAngle = angle / 2;
         dV.ctx.beginPath();
         for (let a = 0; a < TWO_PI; a += angle) {
-            let sx = x + cos(a) * r2;
-            let sy = y + sin(a) * r2;
+            let sx = x + cos(a - HALF_PI) * r2;
+            let sy = y + sin(a - HALF_PI) * r2;
             dV.ctx.lineTo(sx, sy);
-            sx = x + cos(a + halfAngle) * r1;
-            sy = y + sin(a + halfAngle) * r1;
+            sx = x + cos(a - HALF_PI + halfAngle) * r1;
+            sy = y + sin(a - HALF_PI + halfAngle) * r1;
             dV.ctx.lineTo(sx, sy);
         }
         dV.ctx.closePath();
@@ -583,8 +591,8 @@ export function polygon(x: number, y: number, r: number, n: number = 5): void {
         let angle = TWO_PI / n;
         dV.ctx.beginPath();
         for (let a = 0; a < TWO_PI; a += angle) {
-            let sx = x + cos(a) * r;
-            let sy = y + sin(a) * r;
+            let sx = x + cos(a - HALF_PI) * r;
+            let sy = y + sin(a - HALF_PI) * r;
             dV.ctx.lineTo(sx, sy);
         }
         dV.ctx.closePath();
@@ -594,7 +602,7 @@ export function polygon(x: number, y: number, r: number, n: number = 5): void {
 
 export function spline(pts: number[], tension: number = 0.5, closed: boolean = false): void {
     if (!!dV.ctx) {
-        sAttr();
+        save();
         let cp: number[] = [];
         let n = pts.length;
 
@@ -640,7 +648,7 @@ export function spline(pts: number[], tension: number = 0.5, closed: boolean = f
             dV.ctx.stroke();
             dV.ctx.closePath();
         }
-        rAttr();
+        restore();
     }
 }
 
@@ -670,15 +678,15 @@ export function bezier(x1: number, y1: number, cp1x: number, cp1y: number, cp2x:
     }
 }
 
-/* Custom Shapes */
-export function beginShape(x: number, y: number): void {
+/* Custom Paths */
+export function beginPath(x: number, y: number): void {
     if (!!dV.ctx) {
         dV.ctx.beginPath();
         dV.ctx.moveTo(x, y);
     }
 }
 
-export function endShape(): void {
+export function endPath(): void {
     dV.commitShape();
 }
 
@@ -707,21 +715,60 @@ export function quadraticTo(cpx: number, cpy: number, x: number, y: number): voi
 }
 
 /* colors */
-export const coldGrayDark = '#2D2F2F';
-export const coldGrayMidDark = '#696D6D';
-export const coldGrayMidLight = '#B0B6B6';
-export const coldGrayLight = '#ECF4F4';
-export const warmGrayDark = '#333331';
-export const warmGrayMidDark = '#787672';
-export const warmGrayMidLight = '#B4B1AB';
-export const warmGrayLight = '#FAF6EE';
-export const greenDark = '#3B5750';
-export const greenLight = '#5B887C';
-export const redDark = '#743432';
-export const redLight = '#AA5957';
-export const blueDark = '#395465';
-export const blueLight = '#567F98';
+export const light = '#EDE5DD';
+export const dark = '#26201C';
+export const yellow = '#ECDC21';
+export const orange = '#E09423';
+export const green = '#53C352';
+export const red = '#E0533D';
+export const blue = '#4DAFEA';
+export const magenta = '#B34DFF';
 
+function color2rgba(...args: any[] ): ColorRGBA {
+    let argCount = arguments.length;
+    let rgbaColor: ColorRGBA = {r: 0, g: 0, b: 0, a: 1};;
+    switch (argCount) {
+        case 1:
+            if (typeof arguments[0] === 'number') {
+                let col = round(constrain(arguments[0], 0, 255));
+                rgbaColor = {r: col, g: col, b: col, a: 1};
+            } else if (typeof arguments[0] === 'string') {
+                let col = str2rgb(arguments[0]);
+                rgbaColor = {r: col.r, g: col.g, b: col.b, a: 1};
+            }
+            break;
+            
+        case 2:
+            if (typeof arguments[0] === 'string' && typeof arguments[1] === 'number'){
+                let col = str2rgb(arguments[0]);
+            rgbaColor = {r: col.r, g: col.g, b: col.b, a: constrain(arguments[1], 0, 1)};
+            }
+            break;
+        
+        case 3:
+            if (args.every(d => typeof d === 'number')) {
+                rgbaColor = {r: round(constrain(arguments[0], 0, 255)), 
+                    g: round(constrain(arguments[1], 0, 255)),
+                    b: round(constrain(arguments[2], 0, 255)),
+                    a: 1};
+            }
+            break;
+        
+        case 4:
+            if (args.every(d => typeof d === 'number')) {
+                rgbaColor = {r: round(constrain(arguments[0], 0, 255)), 
+                    g: round(constrain(arguments[1], 0, 255)),
+                    b: round(constrain(arguments[2], 0, 255)),
+                    a: constrain(arguments[1], 0, 1)};
+            }
+            break;
+
+        default:
+            rgbaColor = {r: 0, g: 0, b: 0, a: 1};
+            break;
+    }
+    return rgbaColor;
+}
 
 function str2rgb(col: string): ColorRGB {
     let rgb: ColorRGB = {
@@ -775,18 +822,12 @@ export function randomColor(): string {
 /* Assets */
 
 export enum ImgOrigin {
-    bLeft,
-    bRight,
-    bCenter,
-    tLeft,
-    tRight,
-    tCenter,
-    mLeft,
-    mRight,
-    mCenter
+    lb, rb, cb,
+    lt, rt, ct,
+    lc, rc, cc
 }
 
-export function placeImage(img: any, x: number, y: number, origin: ImgOrigin,
+export function placeImage(img: HTMLImageElement, x: number, y: number, origin: ImgOrigin,
     w?: number, h?: number): void {
     let _x = x;
     let _y = y;
@@ -803,45 +844,36 @@ export function placeImage(img: any, x: number, y: number, origin: ImgOrigin,
         _h = img.naturalHeight;
     }
     if (!!dV.ctx) {
-        sAttr();
-        dV.ctx.scale(1, -1);
         switch (origin) {
-            case ImgOrigin.bLeft:
-                dV.ctx.drawImage(img, _x, -_y, _w, -_h);
+            case ImgOrigin.lb:
+                dV.ctx.drawImage(img, _x, _y, _w, -_h);
                 break;
-            case ImgOrigin.bRight:
-                dV.ctx.drawImage(img, _x - _w, -_y, _w, -_h);
+            case ImgOrigin.rb:
+                dV.ctx.drawImage(img, _x - _w, _y , _w, -_h);
                 break;
-            case ImgOrigin.bCenter:
-                dV.ctx.drawImage(img, _x - _w / 2, -_y, _w, -_h);
+            case ImgOrigin.cb:
+                dV.ctx.drawImage(img, _x - _w / 2, _y, _w, -_h);
                 break;
-            case ImgOrigin.tLeft:
-                dV.ctx.drawImage(img, _x, -_y + _h, _w, -_h);
+            case ImgOrigin.lt:
+                dV.ctx.drawImage(img, _x, _y, _w, _h);
                 break;
-            case ImgOrigin.tRight:
-                dV.ctx.drawImage(img, _x - _w, -_y + _h, _w, -_h);
+            case ImgOrigin.rt:
+                dV.ctx.drawImage(img, _x - _w, _y, _w, _h);
                 break;
-            case ImgOrigin.tCenter:
-                dV.ctx.drawImage(img, _x - _w / 2, -_y + _h, _w, -_h);
+            case ImgOrigin.ct:
+                dV.ctx.drawImage(img, _x - _w / 2, _y, _w, _h);
                 break;
-            case ImgOrigin.mLeft:
-                dV.ctx.drawImage(img, _x, -_y + _h / 2, _w, -_h);
+            case ImgOrigin.lc:
+                dV.ctx.drawImage(img, _x, _y + _h / 2, _w, -_h);
                 break;
-            case ImgOrigin.mRight:
-                dV.ctx.drawImage(img, _x - _w, -_y + _h / 2, _w, -_h);
+            case ImgOrigin.rc:
+                dV.ctx.drawImage(img, _x - _w, _y + _h / 2, _w, -_h);
                 break;
-            case ImgOrigin.mCenter:
-                dV.ctx.drawImage(img, _x - _w / 2, -_y + _h / 2, _w, -_h);
+            case ImgOrigin.cc:
+                dV.ctx.drawImage(img, _x - _w / 2, _y + _h / 2, _w, -_h);
                 break;
         }
-        rAttr();
     }
-}
-
-export function playSound(sound: any) {
-    sound.muted = false;
-    sound.load();
-    sound.play();
 }
 
 //---------------------------------------------------//
@@ -850,15 +882,12 @@ export function playSound(sound: any) {
 
 export function text(text: string, x: number, y: number): void {
     let lines = text.split('\n');
-    let lineY = -y;
+    let lineY = y;
     if (!!dV.ctx) {
-        sAttr();
-        dV.ctx.scale(1, -1);
         for (let i = 0; i < lines.length; i++) {
             dV.ctx.fillText(lines[i], x, lineY);
             lineY += dV.fontSize * dV.lineHeight;
         }
-        rAttr();
     }
 
 }
@@ -902,7 +931,7 @@ export function textDim(text: string): {
     };
 }
 
-export enum HAlignment {
+export enum TextAlign {
     left,
     right,
     center,
@@ -910,7 +939,7 @@ export enum HAlignment {
     end
 }
 
-export enum VAlignment {
+export enum TextBaseline {
     top,
     hanging,
     middle,
@@ -919,10 +948,10 @@ export enum VAlignment {
     bottom
 }
 
-export function textAlign(h: HAlignment, v?: VAlignment): void {
+export function textAlign(h: TextAlign, v?: TextBaseline): void {
     if (!!dV.ctx) {
-        const optionsH: any[] = ['left', 'right', 'center', 'start', 'end'];
-        const optionsV: any[] = ['top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'];
+        const optionsH: CanvasTextAlign[] = ['left', 'right', 'center', 'start', 'end'];
+        const optionsV: CanvasTextBaseline[] = ['top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'];
         dV.ctx.textAlign = optionsH[h];
         if (v != undefined) dV.ctx.textBaseline = optionsV[v];
     }
@@ -930,7 +959,7 @@ export function textAlign(h: HAlignment, v?: VAlignment): void {
 
 function setFont(): void {
     if (!!dV.ctx) {
-        dV.ctx.font = dV.fontStyle + ' ' + dV.fontWeight + ' ' + dV.fontSize + 'px ' + dV.fontFamily;
+        dV.ctx.font = `${dV.fontStyle} ${dV.fontWeight} ${dV.fontSize}px ${dV.fontFamily}`;
     }
 }
 
@@ -976,41 +1005,41 @@ export function lineHeight(height?: number): void | number {
     }
 }
 
-export function textOnArc(text: string, x: number, y: number, r: number, startA: number,
-    align: HAlignment = HAlignment.center, outside: boolean = true,
+export function textOnArc(text: string, x: number, y: number, r: number, startAngle: number,
+    align: TextAlign = TextAlign.center, outside: boolean = true,
     inward: boolean = true, kerning: number = 0): number {
     if (!!dV.ctx) {
-        let clockwise = (align === HAlignment.left) ? 1 : -1; // draw clockwise if right. Else counterclockwise
+        let clockwise = (align === TextAlign.left) ? 1 : -1; // draw clockwise if right. Else counterclockwise
         if (!outside) r -= dV.fontSize;
-        if (((align === HAlignment.center || align === HAlignment.right) && inward) ||
-            (align === HAlignment.left && !inward)) text = text.split('').reverse().join('');
-        sAttr();
+        if (((align === TextAlign.center || align === TextAlign.right) && inward) ||
+            (align === TextAlign.left && !inward)) text = text.split('').reverse().join('');
+        save();
         dV.ctx.translate(x, y);
-        dV.ctx.scale(1, -1);
-        startA += HALF_PI;
-        if (!inward) startA += PI;
+        let _startAngle = startAngle;
+        startAngle += HALF_PI;
+        if (!inward) startAngle += PI;
         dV.ctx.textBaseline = 'middle';
         dV.ctx.textAlign = 'center';
-        if (align === HAlignment.center) {
+        if (align === TextAlign.center) {
             for (let i = 0; i < text.length; i++) {
                 let charWidth = dV.ctx.measureText(text[i]).width;
-                startA += ((charWidth + (i === text.length - 1 ? 0 : kerning)) /
+                startAngle += ((charWidth + (i === text.length - 1 ? 0 : kerning)) /
                     (r - dV.fontSize)) / 2 * -clockwise;
             }
         }
-        let tempA = 0;
-        dV.ctx.rotate(startA);
+        let tempAngle = 0;
+        dV.ctx.rotate(startAngle);
         for (let i = 0; i < text.length; i++) {
             let charWidth = dV.ctx.measureText(text[i]).width;
             dV.ctx.rotate((charWidth / 2) / (r - dV.fontSize) * clockwise);
             dV.ctx.fillText(text[i], 0, (inward ? 1 : -1) * (0 - r + dV.fontSize / 2));
 
             dV.ctx.rotate((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
-            tempA += ((charWidth / 2) / (r - dV.fontSize) * clockwise) +
+            tempAngle += ((charWidth / 2) / (r - dV.fontSize) * clockwise) +
                 ((charWidth / 2 + kerning) / (r - dV.fontSize) * clockwise);
         }
-        rAttr();
-        return abs(tempA);
+        restore();
+        return _startAngle + tempAngle;
     } else {
         return 0;
     }
@@ -1063,7 +1092,7 @@ export function int(s: string, radix: number = 10): number {
     return parseInt(s, radix);
 }
 
-export let str: any = String;
+export let str: StringConstructor = String;
 
 export function mm2px(v: number): number {
     return round(dV.dpi * v / 25.4);
@@ -1386,8 +1415,8 @@ export function randomInt(a: number, b: number): number {
     return Math.floor(Math.random() * (Math.max(a, b) - Math.min(a, b) + 1)) + Math.min(a, b);
 }
 
-export function choose(numbers: any[]): any {
-    return numbers[randomInt(0, numbers.length - 1)];
+export function choose(items: any[]): any {
+    return items[randomInt(0, items.length - 1)];
 }
 
 export function random(...args: number[]): number {
@@ -1400,18 +1429,18 @@ export function random(...args: number[]): number {
     }
 }
 
-export function shuffle(array: any[]): void {
+export function shuffle(items: any[]): void {
     let j, x;
-    for (let i = array.length - 1; i > 0; i--) {
+    for (let i = items.length - 1; i > 0; i--) {
         j = Math.floor(Math.random() * (i + 1));
-        x = array[i];
-        array[i] = array[j];
-        array[j] = x;
+        x = items[i];
+        items[i] = items[j];
+        items[j] = x;
     }
 }
 
-export function unique(array: any[]): any[] {
-    return array.filter((value, index, self) => {
+export function unique(items: any[]): any[] {
+    return items.filter((value, index, self) => {
         return self.indexOf(value) === index;
     }).sort();
 }
@@ -1477,13 +1506,14 @@ export function ordinalScale(d: any[], padding: number, resultMin: number,
 
 export let prnt = Function.prototype.bind.call(console.log, console, 'dvlib >> ');
 
-// Preloader
-
-interface AssetsItem {
-    id: string,
-    src: string
+export function svg2img(svg: string): HTMLImageElement {
+    let img = new Image();
+    let blob = new Blob([svg], {type: 'image/svg+xml'});
+    img.src = URL.createObjectURL(blob);
+    return img;
 }
 
+// Preloader
 class Preloader {
     public assets: any;
     public onProgress: () => void;
@@ -1545,12 +1575,6 @@ class Preloader {
                     this.loadJson(id, src, onFinishedLoading);
                     break;
 
-                // Audio files.
-                case 'mp3':
-                case 'wav':
-                    this.loadAudio(id, src, onFinishedLoading);
-                    break;
-
                 // Default case for unsuported file types.
                 default:
                     onFinishedLoading();
@@ -1581,22 +1605,6 @@ class Preloader {
 
             img.onload = callback;
         });
-    }
-
-    // Supports mp3, wav.
-    loadAudio(id: string, src: string, callback: () => void) {
-
-        this.request(src, 'blob', (response) => {
-
-            let audio = new Audio();
-            audio.src = URL.createObjectURL(response);
-            audio.muted = true;
-
-            // Save the sound object to our asset list.
-            this.assets[id] = audio;
-            callback();
-        });
-
     }
 
     request(src: string, type: XMLHttpRequestResponseType, callback: (response: any) => void) {
