@@ -795,7 +795,16 @@ function blend(color1, color2, proportion) {
         var b1 = int(col1.slice(4), 16);
         var b2 = int(col2.slice(4), 16);
         var b = round((1 - proportion) * b1 + proportion * b2);
-        return '#' + r.toString(16) + g.toString(16) + b.toString(16);
+        var strR = r.toString(16);
+        if (strR.length === 1)
+            strR = '0' + strR;
+        var strG = g.toString(16);
+        if (strG.length === 1)
+            strG = '0' + strG;
+        var strB = b.toString(16);
+        if (strB.length === 1)
+            strB = '0' + strB;
+        return '#' + strR + strG + strB;
     }
     else {
         return '#000000';
@@ -871,6 +880,12 @@ function placeImage(img, x, y, origin, w, h) {
     }
 }
 exports.placeImage = placeImage;
+function canvas() {
+    if (!!dV.canvas) {
+        return dV.canvas;
+    }
+}
+exports.canvas = canvas;
 function text(text, x, y) {
     var lines = text.split('\n');
     var lineY = y;

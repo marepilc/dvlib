@@ -160,6 +160,7 @@ export declare enum ImgOrigin {
     cc = 8
 }
 export declare function placeImage(img: HTMLImageElement, x: number, y: number, origin: ImgOrigin, w?: number, h?: number): void;
+export declare function canvas(): HTMLCanvasElement | undefined;
 export declare function text(text: string, x: number, y: number): void;
 export declare function textSize(size?: number): void | number;
 export declare function textWidth(text: string): number;

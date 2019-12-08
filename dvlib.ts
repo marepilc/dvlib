@@ -806,7 +806,13 @@ export function blend(color1: string, color2: string, proportion: number): strin
         let b1 = int(col1.slice(4), 16);
         let b2 = int(col2.slice(4), 16);
         let b = round((1 - proportion) * b1 + proportion * b2);
-        return '#' + r.toString(16) + g.toString(16) + b.toString(16);
+        let strR = r.toString(16);
+        if (strR.length === 1) strR = '0' + strR;
+        let strG = g.toString(16);
+        if (strG.length === 1) strG = '0' + strG;
+        let strB = b.toString(16);
+        if (strB.length === 1) strB = '0' + strB;
+        return '#' + strR + strG + strB;
     } else {
         return '#000000';
     }
@@ -875,6 +881,12 @@ export function placeImage(img: HTMLImageElement, x: number, y: number, origin: 
         }
     }
 }
+
+export function canvas(): HTMLCanvasElement | undefined {
+    if (!!dV.canvas) {
+        return dV.canvas;
+    }
+} 
 
 //---------------------------------------------------//
 /* TYPOGRAPHY */
