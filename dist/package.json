@@ -1,6 +1,6 @@
 {
   "name": "dvlib",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "Dynamic Visualizations Library",
   "main": "dvlib.js",
   "scripts": {

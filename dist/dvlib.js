@@ -49,16 +49,20 @@ function createCanvas(target, id) {
     var cnv = document.createElement('canvas');
     if (id !== undefined)
         cnv.id = id;
-    exports.keyboard = new Keyboard(cnv);
-    dV = new DV(cnv);
+    if (exports.keyboard == undefined)
+        exports.keyboard = new Keyboard(cnv);
+    if (dV == undefined)
+        dV = new DV(cnv);
     target.appendChild(dV.canvas);
     setContextDefault();
 }
 exports.createCanvas = createCanvas;
 function selectCanvas(id) {
     var cnv = document.getElementById(id);
-    exports.keyboard = new Keyboard(cnv);
-    dV = new DV(cnv);
+    if (exports.keyboard == undefined)
+        exports.keyboard = new Keyboard(cnv);
+    if (dV == undefined)
+        dV = new DV(cnv);
     setContextDefault();
 }
 exports.selectCanvas = selectCanvas;

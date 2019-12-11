@@ -79,16 +79,16 @@ function dVrun(setup?: () => void, draw?: () => void, events?: () => void) {
 export function createCanvas(target: HTMLElement, id?: string): void {
     let cnv = document.createElement('canvas');
     if (id !== undefined) cnv.id = id;
-    keyboard = new Keyboard(cnv);   
-    dV = new DV(cnv);
+    if (keyboard == undefined) keyboard = new Keyboard(cnv);   
+    if (dV == undefined) dV = new DV(cnv);
     target.appendChild(dV.canvas);
     setContextDefault();
 }
 
 export function selectCanvas(id: string): void {
     let cnv = <HTMLCanvasElement>document.getElementById(id);
-    keyboard = new Keyboard(cnv);
-    dV = new DV(cnv);
+    if (keyboard == undefined) keyboard = new Keyboard(cnv);
+    if (dV == undefined) dV = new DV(cnv);
     setContextDefault();
 }
 
